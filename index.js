@@ -6,7 +6,9 @@ const {
   StringSelectMenuBuilder,
   SlashCommandBuilder,
   REST,
-  Routes
+  Routes,
+  PermissionFlagsBits,
+  ChannelType
 } = require("discord.js");
 
 const fs = require("fs");
@@ -32,31 +34,73 @@ const DATA_FILE = "./data.json";
 // EMOJIS
 // =====================================================
 
-const E = {
-  feliz: "<:feliz:1543374186540568586>",
-  triste: "<:llorando:1543373946383114332>",
-  alerta: "<:alerta:1563019834495606824>",
-  no: "<:no:1543374123714089122>",
-  dinero: "<:dinero:1563019819639640266>",
-  ojo: "<:emoji_20:1557625884461109348>",
-  prohibido: "<:prohibido:1543374036149477428>",
-  idea: "<:idea:1543374116176928859>",
-  reloj: "<:reloj:1543374030713790515>",
-  estrella: "<:estrella:1543374328140144742>"
+const EMOJIS = {
+  feliz: {
+    name: "feliz",
+    id: "1543374186540568586",
+    animated: false
+  },
+
+  triste: {
+    name: "llorando",
+    id: "1543373946383114332",
+    animated: false
+  },
+
+  alerta: {
+    name: "alerta",
+    id: "1563019834495606824",
+    animated: false
+  },
+
+  no: {
+    name: "no",
+    id: "1543374123714089122",
+    animated: false
+  },
+
+  dinero: {
+    name: "dinero",
+    id: "1563019819639640266",
+    animated: false
+  },
+
+  ojo: {
+    name: "emoji_20",
+    id: "1557625884461109348",
+    animated: false
+  },
+
+  prohibido: {
+    name: "prohibido",
+    id: "1543374036149477428",
+    animated: false
+  },
+
+  idea: {
+    name: "idea",
+    id: "1543374116176928859",
+    animated: false
+  },
+
+  reloj: {
+    name: "reloj",
+    id: "1543374030713790515",
+    animated: false
+  },
+
+  estrella: {
+    name: "estrella",
+    id: "1543374328140144742",
+    animated: false
+  }
 };
 
-const EMOJI_ID = {
-  feliz: "1543374186540568586",
-  triste: "1543373946383114332",
-  alerta: "1563019834495606824",
-  no: "1543374123714089122",
-  dinero: "1563019819639640266",
-  ojo: "1557625884461109348",
-  prohibido: "1543374036149477428",
-  idea: "1543374116176928859",
-  reloj: "1543374030713790515",
-  estrella: "1543374328140144742"
-};
+const EMOJI_ID = Object.fromEntries(
+  Object.entries(EMOJIS).map(
+    ([key, value]) => [key, value.id]
+  )
+);
 
 // =====================================================
 // CLIENT
@@ -72,39 +116,96 @@ const client = new Client({
 });
 
 // =====================================================
-// DATA.JSON
-// Se crea automáticamente.
+// EMOJI HELPER
+// =====================================================
+
+function getEmoji(key) {
+  const emoji = EMOJIS[key];
+
+  if (!emoji) {
+    return "";
+  }
+
+  // Si Discord tiene el emoji en caché,
+  // usamos el objeto real.
+  const cached =
+    client.emojis.cache.get(emoji.id);
+
+  if (cached) {
+    return cached.toString();
+  }
+
+  // Fallback directo mediante ID.
+  return emoji.animated
+    ? `<a:${emoji.name}:${emoji.id}>`
+    : `<:${emoji.name}:${emoji.id}>`;
+}
+
+const E = new Proxy(
+  {},
+  {
+    get(target, property) {
+      return getEmoji(property);
+    }
+  }
+);
+
+// =====================================================
+// DATA
 // =====================================================
 
 const DEFAULT_DATA = {
   users: {},
   shop: [],
-  settings: {}
+  settings: {
+    logs: {
+      general: null,
+      economia: null,
+      tienda: null,
+      niveles: null,
+      admin: null
+    }
+  }
 };
+
+function cloneDefaultData() {
+  return JSON.parse(
+    JSON.stringify(DEFAULT_DATA)
+  );
+}
 
 function loadData() {
   if (!fs.existsSync(DATA_FILE)) {
+    const fresh = cloneDefaultData();
+
     fs.writeFileSync(
       DATA_FILE,
-      JSON.stringify(DEFAULT_DATA, null, 2)
+      JSON.stringify(fresh, null, 2)
     );
 
-    return JSON.parse(
-      JSON.stringify(DEFAULT_DATA)
-    );
+    return fresh;
   }
 
   try {
-    const raw = fs.readFileSync(
-      DATA_FILE,
-      "utf8"
-    );
+    const raw =
+      fs.readFileSync(
+        DATA_FILE,
+        "utf8"
+      );
 
-    const parsed = JSON.parse(raw);
+    const parsed =
+      JSON.parse(raw);
 
     parsed.users ??= {};
     parsed.shop ??= [];
     parsed.settings ??= {};
+    parsed.settings.logs ??= {};
+
+    parsed.settings.logs.general ??= null;
+    parsed.settings.logs.economia ??= null;
+    parsed.settings.logs.tienda ??= null;
+    parsed.settings.logs.niveles ??= null;
+    parsed.settings.logs.admin ??= null;
 
     return parsed;
 
@@ -114,9 +215,7 @@ function loadData() {
       error
     );
 
-    return JSON.parse(
-      JSON.stringify(DEFAULT_DATA)
-    );
+    return cloneDefaultData();
   }
 }
 
@@ -130,9 +229,7 @@ function saveData() {
 }
 
 function getUser(id) {
-
   if (!data.users[id]) {
-
     data.users[id] = {
       wallet: 0,
       bank: 0,
@@ -154,7 +251,8 @@ function getUser(id) {
 
 function random(min, max) {
   return Math.floor(
-    Math.random() * (max - min + 1)
+    Math.random() *
+      (max - min + 1)
   ) + min;
 }
 
@@ -166,7 +264,9 @@ function money(amount) {
 function errorEmbed(text) {
   return new EmbedBuilder()
     .setColor("#ED4245")
-    .setTitle(`${E.no} Ha ocurrido un problema`)
+    .setTitle(
+      `${E.no} Ha ocurrido un problema`
+    )
     .setDescription(text)
     .setFooter({
       text: "LRM Studio Bot"
@@ -176,11 +276,158 @@ function errorEmbed(text) {
 function successEmbed(text) {
   return new EmbedBuilder()
     .setColor("#57F287")
-    .setTitle(`${E.feliz} Completado`)
+    .setTitle(
+      `${E.feliz} Completado`
+    )
     .setDescription(text)
     .setFooter({
       text: "LRM Studio Bot"
     });
+}
+
+// =====================================================
+// LOG SYSTEM
+// =====================================================
+
+function getLogs() {
+  data.settings ??= {};
+  data.settings.logs ??= {};
+
+  data.settings.logs.general ??= null;
+  data.settings.logs.economia ??= null;
+  data.settings.logs.tienda ??= null;
+  data.settings.logs.niveles ??= null;
+  data.settings.logs.admin ??= null;
+
+  return data.settings.logs;
+}
+
+function truncate(text, max = 1000) {
+  if (!text) {
+    return "*Sin contenido*";
+  }
+
+  text = String(text);
+
+  if (text.length <= max) {
+    return text;
+  }
+
+  return (
+    text.slice(0, max - 3) +
+    "..."
+  );
+}
+
+async function sendLog(
+  guild,
+  type,
+  {
+    title,
+    description,
+    color = COLOR,
+    user = null,
+    fields = []
+  } = {}
+) {
+  if (!guild) {
+    return;
+  }
+
+  const logs = getLogs();
+
+  const channelId =
+    logs[type];
+
+  if (!channelId) {
+    return;
+  }
+
+  const channel =
+    guild.channels.cache.get(
+      channelId
+    );
+
+  if (
+    !channel ||
+    !channel.isTextBased()
+  ) {
+    return;
+  }
+
+  const embed =
+    new EmbedBuilder()
+      .setColor(color)
+      .setTitle(
+        title ||
+          `${E.idea} LRM Studio • Log`
+      )
+      .setDescription(
+        description ||
+          "Sin información."
+      )
+      .setTimestamp()
+      .setFooter({
+        text:
+          `LRM Studio Bot • ${type}`
+      });
+
+  if (user) {
+    embed.setAuthor({
+      name:
+        user.tag ||
+        user.username ||
+        "Usuario",
+      iconURL:
+        user.displayAvatarURL?.()
+    });
+  }
+
+  if (fields.length) {
+    embed.addFields(fields);
+  }
+
+  try {
+    await channel.send({
+      embeds: [embed]
+    });
+  } catch (error) {
+    console.error(
+      `Error enviando log ${type}:`,
+      error
+    );
+  }
+}
+
+async function sendAllLogs(
+  guild,
+  options
+) {
+  await sendLog(
+    guild,
+    "general",
+    options
+  );
+}
+
+function logAction(
+  guild,
+  type,
+  options
+) {
+  sendLog(
+    guild,
+    type,
+    options
+  ).catch(console.error);
+
+  if (type !== "general") {
+    sendLog(
+      guild,
+      "general",
+      options
+    ).catch(console.error);
+  }
 }
 
 // =====================================================
@@ -192,7 +439,6 @@ function checkCooldown(
   command,
   duration
 ) {
-
   const last =
     user.cooldowns[command] || 0;
 
@@ -210,7 +456,6 @@ function setCooldown(
   user,
   command
 ) {
-
   user.cooldowns[command] =
     Date.now();
 
@@ -218,17 +463,20 @@ function setCooldown(
 }
 
 function formatTime(ms) {
-
   let seconds =
     Math.ceil(ms / 1000);
 
   const hours =
-    Math.floor(seconds / 3600);
+    Math.floor(
+      seconds / 3600
+    );
 
   seconds %= 3600;
 
   const minutes =
-    Math.floor(seconds / 60);
+    Math.floor(
+      seconds / 60
+    );
 
   seconds %= 60;
 
@@ -250,7 +498,6 @@ function formatTime(ms) {
 }
 
 function cooldownEmbed(ms) {
-
   return new EmbedBuilder()
     .setColor("#FEE75C")
     .setTitle(
@@ -270,7 +517,6 @@ function cooldownEmbed(ms) {
 // =====================================================
 
 function addXP(id) {
-
   const user =
     getUser(id);
 
@@ -284,11 +530,11 @@ function addXP(id) {
 
   let levelUp = false;
 
-  if (user.xp >= required) {
-
+  if (
+    user.xp >= required
+  ) {
     user.xp -= required;
     user.level++;
-
     levelUp = true;
   }
 
@@ -302,20 +548,13 @@ function addXP(id) {
 }
 
 // =====================================================
-// SLASH COMMANDS USUARIOS
+// SLASH COMMANDS
 // =====================================================
 
 const userCommands = [
-
-  // ===================================================
-  // ECONOMÍA
-  // ===================================================
-
   new SlashCommandBuilder()
     .setName("balance")
-    .setDescription(
-      "Consulta tu balance."
-    )
+    .setDescription("Consulta tu balance.")
     .addUserOption(option =>
       option
         .setName("usuario")
@@ -332,7 +571,7 @@ const userCommands = [
     ),
 
   new SlashCommandBuilder()
-    .setName("slut")
+    .setName("risk")
     .setDescription(
       "Realiza una acción económica de riesgo."
     ),
@@ -400,10 +639,6 @@ const userCommands = [
         .setRequired(true)
     ),
 
-  // ===================================================
-  // PERFIL
-  // ===================================================
-
   new SlashCommandBuilder()
     .setName("profile")
     .setDescription(
@@ -429,10 +664,6 @@ const userCommands = [
     .setDescription(
       "Consulta tu nivel."
     ),
-
-  // ===================================================
-  // TIENDA
-  // ===================================================
 
   new SlashCommandBuilder()
     .setName("shop")
@@ -469,10 +700,6 @@ const userCommands = [
         .setRequired(true)
     ),
 
-  // ===================================================
-  // RANKINGS
-  // ===================================================
-
   new SlashCommandBuilder()
     .setName("baltop")
     .setDescription(
@@ -484,10 +711,6 @@ const userCommands = [
     .setDescription(
       "Ranking de niveles."
     ),
-
-  // ===================================================
-  // DIVERSIÓN
-  // ===================================================
 
   new SlashCommandBuilder()
     .setName("coinflip")
@@ -531,10 +754,6 @@ const userCommands = [
         .setRequired(true)
     ),
 
-  // ===================================================
-  // INFORMACIÓN
-  // ===================================================
-
   new SlashCommandBuilder()
     .setName("ping")
     .setDescription(
@@ -561,9 +780,7 @@ const userCommands = [
     .addUserOption(option =>
       option
         .setName("usuario")
-        .setDescription(
-          "Usuario."
-        )
+        .setDescription("Usuario.")
         .setRequired(false)
     ),
 
@@ -575,18 +792,10 @@ const userCommands = [
     .addUserOption(option =>
       option
         .setName("usuario")
-        .setDescription(
-          "Usuario."
-        )
+        .setDescription("Usuario.")
         .setRequired(false)
     )
-
 ];
-
-// =====================================================
-// TODOS LOS SLASH
-// Usuarios + admin.js
-// =====================================================
 
 const commands = [
   ...userCommands,
@@ -600,7 +809,6 @@ const commands = [
 // =====================================================
 
 async function registerCommands() {
-
   if (!TOKEN) {
     console.error(
       "Falta DISCORD_TOKEN."
@@ -621,7 +829,6 @@ async function registerCommands() {
     }).setToken(TOKEN);
 
   try {
-
     console.log(
       "Registrando comandos slash..."
     );
@@ -640,7 +847,6 @@ async function registerCommands() {
     );
 
   } catch (error) {
-
     console.error(
       "Error registrando comandos:",
       error
@@ -649,14 +855,19 @@ async function registerCommands() {
 }
 
 // =====================================================
-// CONECTAR ADMIN.JS
+// ADMIN
 // =====================================================
 
 setupAdmin(
   client,
   {
     data,
-    saveData
+    saveData,
+    getEmoji,
+    EMOJI_ID,
+    sendLog,
+    logAction,
+    prefix: PREFIX
   }
 );
 
@@ -667,7 +878,6 @@ setupAdmin(
 client.once(
   "ready",
   () => {
-
     console.log(
       "================================="
     );
@@ -681,24 +891,400 @@ client.once(
     );
 
     console.log(
+      `Prefix: ${PREFIX}`
+    );
+
+    console.log(
       "================================="
     );
 
     client.user.setActivity(
       "LRM Studio ✨"
     );
+
+    console.log(
+      "Emojis personalizados:"
+    );
+
+    for (
+      const [key, emoji] of
+      Object.entries(EMOJIS)
+    ) {
+      const cached =
+        client.emojis.cache.get(
+          emoji.id
+        );
+
+      console.log(
+        `${key}: ${
+          cached
+            ? cached.toString()
+            : `<:${emoji.name}:${emoji.id}>`
+        }`
+      );
+    }
   }
 );
 
 // =====================================================
-// PREFIX
-// .help
+// LOGS AUTOMÁTICOS DEL SERVIDOR
+// =====================================================
+
+// MENSAJE ELIMINADO
+client.on(
+  "messageDelete",
+  async message => {
+    if (!message.guild) return;
+    if (message.author?.bot) return;
+
+    logAction(
+      message.guild,
+      "general",
+      {
+        title:
+          `${E.no} Mensaje eliminado`,
+        description:
+          `${E.ojo} **Autor:** ${message.author || "Desconocido"}\n` +
+          `${E.estrella} **Canal:** ${message.channel}\n\n` +
+          `${E.triste} **Contenido:**\n` +
+          truncate(
+            message.content ||
+              "*No disponible*"
+          ),
+        color: "#ED4245",
+        user:
+          message.author
+      }
+    );
+  }
+);
+
+// MENSAJE EDITADO
+client.on(
+  "messageUpdate",
+  async (oldMessage, newMessage) => {
+    if (!newMessage.guild) return;
+    if (newMessage.author?.bot) return;
+
+    if (
+      oldMessage.content ===
+      newMessage.content
+    ) {
+      return;
+    }
+
+    logAction(
+      newMessage.guild,
+      "general",
+      {
+        title:
+          `${E.idea} Mensaje editado`,
+        description:
+          `${E.ojo} **Usuario:** ${newMessage.author}\n` +
+          `${E.estrella} **Canal:** ${newMessage.channel}\n\n` +
+          `**Antes:**\n${truncate(
+            oldMessage.content ||
+              "*Sin contenido*"
+          )}\n\n` +
+          `**Después:**\n${truncate(
+            newMessage.content ||
+              "*Sin contenido*"
+          )}`,
+        color: "#FEE75C",
+        user:
+          newMessage.author
+      }
+    );
+  }
+);
+
+// MIEMBRO ENTRA
+client.on(
+  "guildMemberAdd",
+  member => {
+    logAction(
+      member.guild,
+      "general",
+      {
+        title:
+          `${E.feliz} Usuario entró`,
+        description:
+          `${member} **${member.user.tag}** entró al servidor.\n\n` +
+          `${E.idea} ID: **${member.id}**`,
+        color: "#57F287",
+        user: member.user
+      }
+    );
+  }
+);
+
+// MIEMBRO SALE
+client.on(
+  "guildMemberRemove",
+  member => {
+    logAction(
+      member.guild,
+      "general",
+      {
+        title:
+          `${E.triste} Usuario salió`,
+        description:
+          `**${member.user.tag}** abandonó el servidor.\n\n` +
+          `${E.idea} ID: **${member.id}**`,
+        color: "#ED4245",
+        user: member.user
+      }
+    );
+  }
+);
+
+// ROL CREADO
+client.on(
+  "roleCreate",
+  role => {
+    logAction(
+      role.guild,
+      "general",
+      {
+        title:
+          `${E.feliz} Rol creado`,
+        description:
+          `${E.estrella} Se creó el rol ${role}.\n\n` +
+          `${E.idea} ID: **${role.id}**`,
+        color: "#57F287"
+      }
+    );
+  }
+);
+
+// ROL ELIMINADO
+client.on(
+  "roleDelete",
+  role => {
+    logAction(
+      role.guild,
+      "general",
+      {
+        title:
+          `${E.no} Rol eliminado`,
+        description:
+          `${E.triste} Se eliminó el rol **${role.name}**.\n\n` +
+          `${E.idea} ID: **${role.id}**`,
+        color: "#ED4245"
+      }
+    );
+  }
+);
+
+// ROL MODIFICADO
+client.on(
+  "roleUpdate",
+  (oldRole, newRole) => {
+    const changes = [];
+
+    if (
+      oldRole.name !==
+      newRole.name
+    ) {
+      changes.push(
+        `**Nombre:** \`${oldRole.name}\` → \`${newRole.name}\``
+      );
+    }
+
+    if (
+      oldRole.hexColor !==
+      newRole.hexColor
+    ) {
+      changes.push(
+        `**Color:** \`${oldRole.hexColor}\` → \`${newRole.hexColor}\``
+      );
+    }
+
+    if (
+      oldRole.permissions.bitfield !==
+      newRole.permissions.bitfield
+    ) {
+      changes.push(
+        `**Permisos:** modificados`
+      );
+    }
+
+    if (!changes.length) {
+      return;
+    }
+
+    logAction(
+      newRole.guild,
+      "general",
+      {
+        title:
+          `${E.idea} Rol modificado`,
+        description:
+          `${E.estrella} Rol: ${newRole}\n\n` +
+          changes.join("\n"),
+        color: "#FEE75C"
+      }
+    );
+  }
+);
+
+// CANAL CREADO
+client.on(
+  "channelCreate",
+  channel => {
+    if (!channel.guild) return;
+
+    logAction(
+      channel.guild,
+      "general",
+      {
+        title:
+          `${E.feliz} Canal creado`,
+        description:
+          `${E.estrella} Se creó ${channel}.\n\n` +
+          `${E.idea} Nombre: **${channel.name}**\n` +
+          `${E.idea} Tipo: **${channel.type}**`,
+        color: "#57F287"
+      }
+    );
+  }
+);
+
+// CANAL ELIMINADO
+client.on(
+  "channelDelete",
+  channel => {
+    if (!channel.guild) return;
+
+    logAction(
+      channel.guild,
+      "general",
+      {
+        title:
+          `${E.no} Canal eliminado`,
+        description:
+          `${E.triste} Se eliminó el canal **${channel.name}**.\n\n` +
+          `${E.idea} ID: **${channel.id}**`,
+        color: "#ED4245"
+      }
+    );
+  }
+);
+
+// CANAL MODIFICADO
+client.on(
+  "channelUpdate",
+  (oldChannel, newChannel) => {
+    if (!newChannel.guild) {
+      return;
+    }
+
+    const changes = [];
+
+    if (
+      oldChannel.name !==
+      newChannel.name
+    ) {
+      changes.push(
+        `**Nombre:** \`${oldChannel.name}\` → \`${newChannel.name}\``
+      );
+    }
+
+    if (
+      oldChannel.topic !==
+      newChannel.topic
+    ) {
+      changes.push(
+        `**Tema:** modificado`
+      );
+    }
+
+    if (
+      oldChannel.parentId !==
+      newChannel.parentId
+    ) {
+      changes.push(
+        `**Categoría:** modificada`
+      );
+    }
+
+    if (!changes.length) {
+      return;
+    }
+
+    logAction(
+      newChannel.guild,
+      "general",
+      {
+        title:
+          `${E.idea} Canal modificado`,
+        description:
+          `${E.ojo} Canal: ${newChannel}\n\n` +
+          changes.join("\n"),
+        color: "#FEE75C"
+      }
+    );
+  }
+);
+
+// SERVIDOR MODIFICADO
+client.on(
+  "guildUpdate",
+  (oldGuild, newGuild) => {
+    const changes = [];
+
+    if (
+      oldGuild.name !==
+      newGuild.name
+    ) {
+      changes.push(
+        `**Nombre:** \`${oldGuild.name}\` → \`${newGuild.name}\``
+      );
+    }
+
+    if (
+      oldGuild.description !==
+      newGuild.description
+    ) {
+      changes.push(
+        `**Descripción:** modificada`
+      );
+    }
+
+    if (
+      oldGuild.icon !==
+      newGuild.icon
+    ) {
+      changes.push(
+        `**Icono:** modificado`
+      );
+    }
+
+    if (!changes.length) {
+      return;
+    }
+
+    logAction(
+      newGuild,
+      "general",
+      {
+        title:
+          `${E.alerta} Servidor modificado`,
+        description:
+          changes.join("\n"),
+        color: "#FEE75C"
+      }
+    );
+  }
+);
+
+// =====================================================
+// PREFIX COMMANDS
 // =====================================================
 
 client.on(
   "messageCreate",
   async message => {
-
     if (message.author.bot) {
       return;
     }
@@ -724,12 +1310,17 @@ client.on(
     const command =
       args.shift()?.toLowerCase();
 
-    // =================================================
-    // .HELP
-    // =================================================
+    if (!command) {
+      return;
+    }
 
-    if (command === "help") {
+    // ===============================================
+    // .help
+    // ===============================================
 
+    if (
+      command === "help"
+    ) {
       const embed =
         new EmbedBuilder()
           .setColor(COLOR)
@@ -741,17 +1332,14 @@ client.on(
           )
           .setDescription(
             `${E.feliz} **¡Bienvenido al menú de ayuda!**\n\n` +
-
-            `Selecciona una categoría en el menú inferior para consultar mis comandos.\n\n` +
-
+            `Selecciona una categoría en el menú inferior.\n\n` +
             `${E.dinero} **Economía**\n` +
             `${E.estrella} **Perfil**\n` +
             `${E.dinero} **Tienda**\n` +
             `${E.estrella} **Rankings**\n` +
             `${E.feliz} **Diversión**\n` +
             `${E.idea} **Información**\n\n` +
-
-            `${E.idea} Los comandos administrativos están separados en **.admin**.`
+            `${E.idea} Los comandos administrativos están en **.admin**.`
           )
           .setFooter({
             text:
@@ -773,7 +1361,9 @@ client.on(
                 "Dinero, banco y trabajos.",
               value: "economia",
               emoji: {
-                id: EMOJI_ID.dinero
+                id: EMOJI_ID.dinero,
+                name:
+                  EMOJIS.dinero.name
               }
             },
             {
@@ -782,7 +1372,9 @@ client.on(
                 "Perfil, inventario y niveles.",
               value: "perfil",
               emoji: {
-                id: EMOJI_ID.estrella
+                id: EMOJI_ID.estrella,
+                name:
+                  EMOJIS.estrella.name
               }
             },
             {
@@ -791,7 +1383,9 @@ client.on(
                 "Compra productos y roles.",
               value: "tienda",
               emoji: {
-                id: EMOJI_ID.dinero
+                id: EMOJI_ID.dinero,
+                name:
+                  EMOJIS.dinero.name
               }
             },
             {
@@ -800,7 +1394,9 @@ client.on(
                 "Consulta los mejores usuarios.",
               value: "rankings",
               emoji: {
-                id: EMOJI_ID.estrella
+                id: EMOJI_ID.estrella,
+                name:
+                  EMOJIS.estrella.name
               }
             },
             {
@@ -809,7 +1405,9 @@ client.on(
                 "Comandos para pasar el rato.",
               value: "diversion",
               emoji: {
-                id: EMOJI_ID.feliz
+                id: EMOJI_ID.feliz,
+                name:
+                  EMOJIS.feliz.name
               }
             },
             {
@@ -818,20 +1416,23 @@ client.on(
                 "Información del bot y servidor.",
               value: "informacion",
               emoji: {
-                id: EMOJI_ID.idea
+                id: EMOJI_ID.idea,
+                name:
+                  EMOJIS.idea.name
               }
             }
           );
 
-      const row =
-        new ActionRowBuilder()
-          .addComponents(menu);
-
       return message.reply({
         embeds: [embed],
-        components: [row]
+        components: [
+          new ActionRowBuilder()
+            .addComponents(menu)
+        ]
       });
     }
+
+    // .setlog y .logs están en admin.js
   }
 );
 
@@ -843,19 +1444,17 @@ client.on(
   "interactionCreate",
   async interaction => {
 
-    // =================================================
-    // AUTOCOMPLETE /BUY
-    // =================================================
+    // ===============================================
+    // AUTOCOMPLETE
+    // ===============================================
 
     if (
       interaction.isAutocomplete()
     ) {
-
       if (
         interaction.commandName ===
         "buy"
       ) {
-
         const focused =
           interaction.options
             .getFocused()
@@ -875,7 +1474,6 @@ client.on(
             name:
               `${product.name} • ` +
               `${money(product.price)} monedas`,
-
             value:
               product.name
           }))
@@ -885,16 +1483,15 @@ client.on(
       return;
     }
 
-    // =================================================
+    // ===============================================
     // HELP MENU
-    // =================================================
+    // ===============================================
 
     if (
       interaction.isStringSelectMenu() &&
       interaction.customId ===
         "lrm_help_menu"
     ) {
-
       const category =
         interaction.values[0];
 
@@ -909,47 +1506,25 @@ client.on(
       if (
         category === "economia"
       ) {
-
         embed
           .setTitle(
             `${E.dinero} Economía`
           )
           .setDescription(
-            `${E.dinero} **/balance**\n` +
-            `Consulta tu dinero y banco.\n\n` +
-
-            `${E.feliz} **/work**\n` +
-            `Gana **20-30 monedas**.\n` +
-            `${E.reloj} Cada **30 segundos**.\n\n` +
-
-            `${E.alerta} **/slut**\n` +
-            `Puedes ganar **40-70 monedas**.\n` +
-            `${E.triste} 70% de probabilidad de recibir una penalización de **50-100 monedas**.\n` +
-            `${E.reloj} Cada **1 minuto**.\n\n` +
-
-            `${E.alerta} **/crime**\n` +
-            `Puedes ganar **50-80 monedas**.\n` +
-            `${E.triste} 80% de probabilidad de recibir una penalización de **70-200 monedas**.\n` +
-            `${E.reloj} Cada **2 minutos**.\n\n` +
-
-            `${E.estrella} **/daily**\n` +
-            `Recibe **50 monedas** cada **24 horas**.\n\n` +
-
-            `${E.dinero} **/dep cantidad/all**\n` +
-            `Deposita dinero en el banco.\n\n` +
-
-            `${E.dinero} **/with cantidad/all**\n` +
-            `Retira dinero del banco.\n\n` +
-
-            `${E.dinero} **/pay usuario cantidad**\n` +
-            `Envía monedas a otro usuario.`
+            `${E.dinero} **/balance** — Consulta tu dinero.\n\n` +
+            `${E.feliz} **/work** — Gana 20-30 monedas cada 30 segundos.\n\n` +
+            `${E.alerta} **/risk** — Acción económica de riesgo.\n\n` +
+            `${E.alerta} **/crime** — Acción económica de riesgo.\n\n` +
+            `${E.estrella} **/daily** — 50 monedas cada 24 horas.\n\n` +
+            `${E.dinero} **/dep** — Deposita dinero.\n\n` +
+            `${E.dinero} **/with** — Retira dinero.\n\n` +
+            `${E.dinero} **/pay** — Envía monedas.`
           );
       }
 
       if (
         category === "perfil"
       ) {
-
         embed
           .setTitle(
             `${E.estrella} Perfil`
@@ -965,7 +1540,6 @@ client.on(
       if (
         category === "tienda"
       ) {
-
         embed
           .setTitle(
             `${E.dinero} Tienda`
@@ -980,13 +1554,12 @@ client.on(
       if (
         category === "rankings"
       ) {
-
         embed
           .setTitle(
             `${E.estrella} Rankings`
           )
           .setDescription(
-            `${E.dinero} **/baltop** — Ranking de economía.\n\n` +
+            `${E.dinero} **/baltop** — Ranking económico.\n\n` +
             `${E.estrella} **/leveltop** — Ranking de niveles.`
           );
       }
@@ -994,13 +1567,12 @@ client.on(
       if (
         category === "diversion"
       ) {
-
         embed
           .setTitle(
             `${E.feliz} Diversión`
           )
           .setDescription(
-            `${E.feliz} **/coinflip** — Cara o cruz sin apuestas.\n\n` +
+            `${E.feliz} **/coinflip** — Cara o cruz.\n\n` +
             `${E.idea} **/8ball** — Bola mágica.\n\n` +
             `${E.estrella} **/random** — Número aleatorio.`
           );
@@ -1010,7 +1582,6 @@ client.on(
         category ===
         "informacion"
       ) {
-
         embed
           .setTitle(
             `${E.idea} Información`
@@ -1029,10 +1600,6 @@ client.on(
       });
     }
 
-    // =================================================
-    // SLASH
-    // =================================================
-
     if (
       !interaction.isChatInputCommand()
     ) {
@@ -1042,14 +1609,13 @@ client.on(
     const command =
       interaction.commandName;
 
-    // =================================================
+    // ===============================================
     // BALANCE
-    // =================================================
+    // ===============================================
 
     if (
       command === "balance"
     ) {
-
       const target =
         interaction.options.getUser(
           "usuario"
@@ -1060,58 +1626,53 @@ client.on(
         getUser(target.id);
 
       const total =
-        user.wallet + user.bank;
-
-      const embed =
-        new EmbedBuilder()
-          .setColor(COLOR)
-          .setTitle(
-            `${E.dinero} Balance de ${target.username}`
-          )
-          .setThumbnail(
-            target.displayAvatarURL()
-          )
-          .addFields(
-            {
-              name:
-                `${E.dinero} Efectivo`,
-              value:
-                `**${money(user.wallet)}**`,
-              inline: true
-            },
-            {
-              name:
-                `${E.estrella} Banco`,
-              value:
-                `**${money(user.bank)}**`,
-              inline: true
-            },
-            {
-              name:
-                `${E.dinero} Patrimonio`,
-              value:
-                `**${money(total)}**`,
-              inline: false
-            }
-          )
-          .setFooter({
-            text:
-              "LRM Studio Bot • Economía"
-          });
+        user.wallet +
+        user.bank;
 
       return interaction.reply({
-        embeds: [embed]
+        embeds: [
+          new EmbedBuilder()
+            .setColor(COLOR)
+            .setTitle(
+              `${E.dinero} Balance de ${target.username}`
+            )
+            .setThumbnail(
+              target.displayAvatarURL()
+            )
+            .addFields(
+              {
+                name:
+                  `${E.dinero} Efectivo`,
+                value:
+                  `**${money(user.wallet)}**`,
+                inline: true
+              },
+              {
+                name:
+                  `${E.estrella} Banco`,
+                value:
+                  `**${money(user.bank)}**`,
+                inline: true
+              },
+              {
+                name:
+                  `${E.dinero} Patrimonio`,
+                value:
+                  `**${money(total)}**`,
+                inline: false
+              }
+            )
+        ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // WORK
-    // =================================================
+    // ===============================================
 
     if (
       command === "work"
     ) {
-
       const user =
         getUser(
           interaction.user.id
@@ -1121,11 +1682,10 @@ client.on(
         checkCooldown(
           user,
           "work",
-          30 * 1000
+          30000
         );
 
       if (cooldown) {
-
         return interaction.reply({
           embeds: [
             cooldownEmbed(
@@ -1146,40 +1706,61 @@ client.on(
         "work"
       );
 
-      addXP(
-        interaction.user.id
-      );
+      const xp =
+        addXP(
+          interaction.user.id
+        );
 
       saveData();
 
+      logAction(
+        interaction.guild,
+        "economia",
+        {
+          title:
+            `${E.dinero} Work`,
+          description:
+            `${interaction.user} trabajó.\n\n` +
+            `${E.dinero} Ganó: **${money(amount)} monedas**`,
+          color: "#57F287",
+          user:
+            interaction.user
+        }
+      );
+
+      if (xp.levelUp) {
+        logAction(
+          interaction.guild,
+          "niveles",
+          {
+            title:
+              `${E.estrella} Subida de nivel`,
+            description:
+              `${interaction.user} alcanzó el **nivel ${xp.level}**.`,
+            color: "#FFD700",
+            user:
+              interaction.user
+          }
+        );
+      }
+
       return interaction.reply({
         embeds: [
-          new EmbedBuilder()
-            .setColor("#57F287")
-            .setTitle(
-              `${E.feliz} Trabajo completado`
-            )
-            .setDescription(
-              `Terminaste tu trabajo correctamente.\n\n` +
-              `${E.dinero} Ganaste **${amount} monedas**.\n\n` +
-              `${E.dinero} Efectivo actual: **${money(user.wallet)}**`
-            )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Work"
-            })
+          successEmbed(
+            `${E.dinero} Ganaste **${amount} monedas**.\n\n` +
+            `${E.dinero} Efectivo actual: **${money(user.wallet)}**`
+          )
         ]
       });
     }
 
-    // =================================================
-    // SLUT
-    // =================================================
+    // ===============================================
+    // RISK
+    // ===============================================
 
     if (
-      command === "slut"
+      command === "risk"
     ) {
-
       const user =
         getUser(
           interaction.user.id
@@ -1188,12 +1769,11 @@ client.on(
       const cooldown =
         checkCooldown(
           user,
-          "slut",
-          60 * 1000
+          "risk",
+          60000
         );
 
       if (cooldown) {
-
         return interaction.reply({
           embeds: [
             cooldownEmbed(
@@ -1206,24 +1786,34 @@ client.on(
 
       setCooldown(
         user,
-        "slut"
+        "risk"
       );
 
-      // 70% de probabilidad
-      // de penalización.
       const loses =
         Math.random() < 0.70;
 
       if (loses) {
-
         const amount =
           random(50, 100);
 
-        // Puede quedar negativo,
-        // como pediste.
         user.wallet -= amount;
 
         saveData();
+
+        logAction(
+          interaction.guild,
+          "economia",
+          {
+            title:
+              `${E.triste} Acción económica fallida`,
+            description:
+              `${interaction.user} perdió dinero.\n\n` +
+              `${E.dinero} Penalización: **-${amount} monedas**`,
+            color: "#ED4245",
+            user:
+              interaction.user
+          }
+        );
 
         return interaction.reply({
           embeds: [
@@ -1233,14 +1823,9 @@ client.on(
                 `${E.triste} Salió mal`
               )
               .setDescription(
-                `Esta vez la acción no salió bien.\n\n` +
                 `${E.triste} Penalización: **-${amount} monedas**\n\n` +
                 `${E.dinero} Efectivo actual: **${money(user.wallet)}**`
               )
-              .setFooter({
-                text:
-                  "LRM Studio Bot"
-              })
           ]
         });
       }
@@ -1250,39 +1835,60 @@ client.on(
 
       user.wallet += amount;
 
-      addXP(
-        interaction.user.id
-      );
+      const xp =
+        addXP(
+          interaction.user.id
+        );
 
       saveData();
 
+      logAction(
+        interaction.guild,
+        "economia",
+        {
+          title:
+            `${E.feliz} Acción económica`,
+          description:
+            `${interaction.user} ganó **${amount} monedas**.`,
+          color: "#57F287",
+          user:
+            interaction.user
+        }
+      );
+
+      if (xp.levelUp) {
+        logAction(
+          interaction.guild,
+          "niveles",
+          {
+            title:
+              `${E.estrella} Subida de nivel`,
+            description:
+              `${interaction.user} alcanzó el **nivel ${xp.level}**.`,
+            color: "#FFD700",
+            user:
+              interaction.user
+          }
+        );
+      }
+
       return interaction.reply({
         embeds: [
-          new EmbedBuilder()
-            .setColor("#57F287")
-            .setTitle(
-              `${E.feliz} ¡Salió bien!`
-            )
-            .setDescription(
-              `${E.dinero} Conseguistes **${amount} monedas**.\n\n` +
-              `${E.dinero} Efectivo actual: **${money(user.wallet)}**`
-            )
-            .setFooter({
-              text:
-                "LRM Studio Bot"
-            })
+          successEmbed(
+            `${E.dinero} Ganaste **${amount} monedas**.\n\n` +
+            `${E.dinero} Efectivo actual: **${money(user.wallet)}**`
+          )
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // CRIME
-    // =================================================
+    // ===============================================
 
     if (
       command === "crime"
     ) {
-
       const user =
         getUser(
           interaction.user.id
@@ -1292,11 +1898,10 @@ client.on(
         checkCooldown(
           user,
           "crime",
-          2 * 60 * 1000
+          120000
         );
 
       if (cooldown) {
-
         return interaction.reply({
           embeds: [
             cooldownEmbed(
@@ -1312,38 +1917,42 @@ client.on(
         "crime"
       );
 
-      // 80% de probabilidad
-      // de penalización.
       const loses =
         Math.random() < 0.80;
 
       if (loses) {
-
         const amount =
           random(70, 200);
 
-        // El saldo puede
-        // quedar negativo.
         user.wallet -= amount;
 
         saveData();
+
+        logAction(
+          interaction.guild,
+          "economia",
+          {
+            title:
+              `${E.alerta} Crime fallido`,
+            description:
+              `${interaction.user} recibió una multa de **${amount} monedas**.`,
+            color: "#ED4245",
+            user:
+              interaction.user
+          }
+        );
 
         return interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setColor("#ED4245")
               .setTitle(
-                `${E.alerta} El crimen salió mal`
+                `${E.alerta} La acción salió mal`
               )
               .setDescription(
-                `Fuiste descubierto y recibiste una multa.\n\n` +
                 `${E.triste} Multa: **-${amount} monedas**\n\n` +
                 `${E.dinero} Efectivo actual: **${money(user.wallet)}**`
               )
-              .setFooter({
-                text:
-                  "LRM Studio Bot • Crime"
-              })
           ]
         });
       }
@@ -1353,39 +1962,60 @@ client.on(
 
       user.wallet += amount;
 
-      addXP(
-        interaction.user.id
-      );
+      const xp =
+        addXP(
+          interaction.user.id
+        );
 
       saveData();
 
+      logAction(
+        interaction.guild,
+        "economia",
+        {
+          title:
+            `${E.feliz} Crime completado`,
+          description:
+            `${interaction.user} ganó **${amount} monedas**.`,
+          color: "#57F287",
+          user:
+            interaction.user
+        }
+      );
+
+      if (xp.levelUp) {
+        logAction(
+          interaction.guild,
+          "niveles",
+          {
+            title:
+              `${E.estrella} Subida de nivel`,
+            description:
+              `${interaction.user} alcanzó el **nivel ${xp.level}**.`,
+            color: "#FFD700",
+            user:
+              interaction.user
+          }
+        );
+      }
+
       return interaction.reply({
         embeds: [
-          new EmbedBuilder()
-            .setColor("#57F287")
-            .setTitle(
-              `${E.feliz} Acción completada`
-            )
-            .setDescription(
-              `${E.dinero} Conseguistes **${amount} monedas**.\n\n` +
-              `${E.dinero} Efectivo actual: **${money(user.wallet)}**`
-            )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Crime"
-            })
+          successEmbed(
+            `${E.dinero} Ganaste **${amount} monedas**.\n\n` +
+            `${E.dinero} Efectivo actual: **${money(user.wallet)}**`
+          )
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // DAILY
-    // =================================================
+    // ===============================================
 
     if (
       command === "daily"
     ) {
-
       const user =
         getUser(
           interaction.user.id
@@ -1395,11 +2025,10 @@ client.on(
         checkCooldown(
           user,
           "daily",
-          24 * 60 * 60 * 1000
+          86400000
         );
 
       if (cooldown) {
-
         return interaction.reply({
           embeds: [
             cooldownEmbed(
@@ -1419,34 +2048,37 @@ client.on(
 
       saveData();
 
+      logAction(
+        interaction.guild,
+        "economia",
+        {
+          title:
+            `${E.estrella} Daily`,
+          description:
+            `${interaction.user} recibió **50 monedas**.`,
+          color: "#57F287",
+          user:
+            interaction.user
+        }
+      );
+
       return interaction.reply({
         embeds: [
-          new EmbedBuilder()
-            .setColor("#57F287")
-            .setTitle(
-              `${E.estrella} Recompensa diaria`
-            )
-            .setDescription(
-              `${E.feliz} Recogiste tu recompensa diaria.\n\n` +
-              `${E.dinero} Recibiste **50 monedas**.\n\n` +
-              `${E.reloj} Próxima recompensa en **24 horas**.`
-            )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Daily"
-            })
+          successEmbed(
+            `${E.feliz} Recibiste **50 monedas**.\n\n` +
+            `${E.reloj} Próxima recompensa en **24 horas**.`
+          )
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // DEP
-    // =================================================
+    // ===============================================
 
     if (
       command === "dep"
     ) {
-
       const user =
         getUser(
           interaction.user.id
@@ -1454,12 +2086,13 @@ client.on(
 
       const input =
         interaction.options
-          .getString("cantidad")
+          .getString(
+            "cantidad"
+          )
           .trim()
           .toLowerCase();
 
       if (user.wallet <= 0) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
@@ -1470,28 +2103,19 @@ client.on(
         });
       }
 
-      let amount;
-
-      if (input === "all") {
-
-        amount =
-          user.wallet;
-
-      } else {
-
-        amount =
-          Number(input);
-      }
+      const amount =
+        input === "all"
+          ? user.wallet
+          : Number(input);
 
       if (
         !Number.isInteger(amount) ||
         amount <= 0
       ) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.idea} Introduce una cantidad válida o escribe **all**.`
+              `${E.idea} Introduce una cantidad válida o **all**.`
             )
           ],
           ephemeral: true
@@ -1501,11 +2125,10 @@ client.on(
       if (
         amount > user.wallet
       ) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.no} No tienes suficientes monedas en efectivo.`
+              `${E.no} No tienes suficientes monedas.`
             )
           ],
           ephemeral: true
@@ -1516,6 +2139,19 @@ client.on(
       user.bank += amount;
 
       saveData();
+
+      logAction(
+        interaction.guild,
+        "economia",
+        {
+          title:
+            `${E.dinero} Depósito`,
+          description:
+            `${interaction.user} depositó **${money(amount)} monedas**.`,
+          user:
+            interaction.user
+        }
+      );
 
       return interaction.reply({
         embeds: [
@@ -1528,14 +2164,13 @@ client.on(
       });
     }
 
-    // =================================================
+    // ===============================================
     // WITH
-    // =================================================
+    // ===============================================
 
     if (
       command === "with"
     ) {
-
       const user =
         getUser(
           interaction.user.id
@@ -1543,32 +2178,25 @@ client.on(
 
       const input =
         interaction.options
-          .getString("cantidad")
+          .getString(
+            "cantidad"
+          )
           .trim()
           .toLowerCase();
 
-      let amount;
-
-      if (input === "all") {
-
-        amount =
-          user.bank;
-
-      } else {
-
-        amount =
-          Number(input);
-      }
+      const amount =
+        input === "all"
+          ? user.bank
+          : Number(input);
 
       if (
         !Number.isInteger(amount) ||
         amount <= 0
       ) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.idea} Introduce una cantidad válida o escribe **all**.`
+              `${E.idea} Introduce una cantidad válida o **all**.`
             )
           ],
           ephemeral: true
@@ -1578,7 +2206,6 @@ client.on(
       if (
         amount > user.bank
       ) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
@@ -1594,6 +2221,19 @@ client.on(
 
       saveData();
 
+      logAction(
+        interaction.guild,
+        "economia",
+        {
+          title:
+            `${E.dinero} Retiro`,
+          description:
+            `${interaction.user} retiró **${money(amount)} monedas**.`,
+          user:
+            interaction.user
+        }
+      );
+
       return interaction.reply({
         embeds: [
           successEmbed(
@@ -1605,14 +2245,13 @@ client.on(
       });
     }
 
-    // =================================================
+    // ===============================================
     // PAY
-    // =================================================
+    // ===============================================
 
     if (
       command === "pay"
     ) {
-
       const target =
         interaction.options.getUser(
           "usuario"
@@ -1624,7 +2263,6 @@ client.on(
         );
 
       if (target.bot) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
@@ -1639,7 +2277,6 @@ client.on(
         target.id ===
         interaction.user.id
       ) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
@@ -1660,16 +2297,13 @@ client.on(
           target.id
         );
 
-      // Si está en negativo,
-      // tampoco puede pagar.
       if (
         sender.wallet < amount
       ) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.dinero} No tienes suficiente efectivo para realizar esta transferencia.`
+              `${E.dinero} No tienes suficiente efectivo.`
             )
           ],
           ephemeral: true
@@ -1681,32 +2315,36 @@ client.on(
 
       saveData();
 
+      logAction(
+        interaction.guild,
+        "economia",
+        {
+          title:
+            `${E.dinero} Transferencia`,
+          description:
+            `${interaction.user} envió **${money(amount)} monedas** a ${target}.`,
+          color: "#57F287",
+          user:
+            interaction.user
+        }
+      );
+
       return interaction.reply({
         embeds: [
-          new EmbedBuilder()
-            .setColor("#57F287")
-            .setTitle(
-              `${E.dinero} Transferencia completada`
-            )
-            .setDescription(
-              `${E.feliz} ${interaction.user} envió **${money(amount)} monedas** a ${target}.`
-            )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Pay"
-            })
+          successEmbed(
+            `${E.feliz} Enviaste **${money(amount)} monedas** a ${target}.`
+          )
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // PROFILE
-    // =================================================
+    // ===============================================
 
     if (
       command === "profile"
     ) {
-
       const target =
         interaction.options.getUser(
           "usuario"
@@ -1714,9 +2352,7 @@ client.on(
         interaction.user;
 
       const user =
-        getUser(
-          target.id
-        );
+        getUser(target.id);
 
       const total =
         user.wallet +
@@ -1776,22 +2412,17 @@ client.on(
                 inline: true
               }
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Perfil"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // INVENTORY
-    // =================================================
+    // ===============================================
 
     if (
       command === "inventory"
     ) {
-
       const user =
         getUser(
           interaction.user.id
@@ -1802,19 +2433,15 @@ client.on(
       if (
         user.inventory.length === 0
       ) {
-
         description =
-          `${E.triste} No tienes objetos en tu inventario.`;
-
+          `${E.triste} No tienes objetos.`;
       } else {
-
         const counts = {};
 
         for (
           const item of
           user.inventory
         ) {
-
           counts[item] =
             (counts[item] || 0) + 1;
         }
@@ -1833,34 +2460,26 @@ client.on(
           new EmbedBuilder()
             .setColor(COLOR)
             .setTitle(
-              `${E.ojo} Inventario de ${interaction.user.username}`
+              `${E.ojo} Inventario`
             )
             .setDescription(
               description
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Inventory"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // RANK
-    // =================================================
+    // ===============================================
 
     if (
       command === "rank"
     ) {
-
       const user =
         getUser(
           interaction.user.id
         );
-
-      const required =
-        user.level * 100;
 
       return interaction.reply({
         embeds: [
@@ -1869,33 +2488,24 @@ client.on(
             .setTitle(
               `${E.estrella} Nivel de ${interaction.user.username}`
             )
-            .setThumbnail(
-              interaction.user.displayAvatarURL()
-            )
             .setDescription(
-              `${E.estrella} Nivel actual: **${user.level}**\n\n` +
-              `${E.idea} XP: **${user.xp}/${required}**`
+              `${E.estrella} Nivel: **${user.level}**\n\n` +
+              `${E.idea} XP: **${user.xp}/${user.level * 100}**`
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Levels"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // SHOP
-    // =================================================
+    // ===============================================
 
     if (
       command === "shop"
     ) {
-
       if (
         data.shop.length === 0
       ) {
-
         return interaction.reply({
           embeds: [
             new EmbedBuilder()
@@ -1904,8 +2514,7 @@ client.on(
                 `${E.dinero} LRM Shop`
               )
               .setDescription(
-                `${E.triste} Actualmente no hay productos disponibles.\n\n` +
-                `${E.idea} Un administrador puede añadir productos desde **.admin**.`
+                `${E.triste} No hay productos disponibles.`
               )
           ]
         });
@@ -1915,7 +2524,6 @@ client.on(
         data.shop
           .map(
             (product, index) => {
-
               const type =
                 product.type ===
                 "role"
@@ -1941,22 +2549,17 @@ client.on(
             .setDescription(
               products
             )
-            .setFooter({
-              text:
-                "Utiliza /buy para comprar"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // BUY
-    // =================================================
+    // ===============================================
 
     if (
       command === "buy"
     ) {
-
       const name =
         interaction.options.getString(
           "producto"
@@ -1971,11 +2574,10 @@ client.on(
         );
 
       if (!product) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.no} Ese producto no existe en la tienda.`
+              `${E.no} Ese producto no existe.`
             )
           ],
           ephemeral: true
@@ -1991,11 +2593,10 @@ client.on(
         user.wallet <
         product.price
       ) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.dinero} Necesitas **${money(product.price)} monedas** para comprar **${product.name}**.\n\n` +
+              `${E.dinero} Necesitas **${money(product.price)} monedas**.\n\n` +
               `${E.dinero} Tienes: **${money(user.wallet)}**`
             )
           ],
@@ -2003,27 +2604,19 @@ client.on(
         });
       }
 
-      // ===============================================
-      // PRODUCTO TIPO ROL
-      // ===============================================
-
       if (
         product.type === "role"
       ) {
-
         const role =
-          interaction.guild
-            .roles.cache
-            .get(
-              product.roleId
-            );
+          interaction.guild.roles.cache.get(
+            product.roleId
+          );
 
         if (!role) {
-
           return interaction.reply({
             embeds: [
               errorEmbed(
-                `${E.no} El rol asociado a este producto ya no existe.`
+                `${E.no} El rol ya no existe.`
               )
             ],
             ephemeral: true
@@ -2031,14 +2624,14 @@ client.on(
         }
 
         if (
-          interaction.member.roles.cache
-            .has(role.id)
+          interaction.member.roles.cache.has(
+            role.id
+          )
         ) {
-
           return interaction.reply({
             embeds: [
               errorEmbed(
-                `${E.alerta} Ya tienes el rol ${role}.`
+                `${E.alerta} Ya tienes ese rol.`
               )
             ],
             ephemeral: true
@@ -2046,46 +2639,53 @@ client.on(
         }
 
         try {
-
-          await interaction.member
-            .roles.add(role);
-
+          await interaction.member.roles.add(
+            role
+          );
         } catch (error) {
-
           console.error(error);
 
           return interaction.reply({
             embeds: [
               errorEmbed(
-                `${E.prohibido} No pude entregarte ${role}.\n\n` +
-                `${E.idea} Un administrador debe revisar la jerarquía y los permisos del bot.`
+                `${E.prohibido} No pude entregarte el rol.`
               )
             ],
             ephemeral: true
           });
         }
 
-        // Descontamos después
-        // de entregar el rol.
         user.wallet -=
           product.price;
 
         saveData();
 
+        logAction(
+          interaction.guild,
+          "tienda",
+          {
+            title:
+              `${E.dinero} Compra de rol`,
+            description:
+              `${interaction.user} compró **${product.name}**.\n\n` +
+              `${E.dinero} Precio: **${money(product.price)} monedas**\n` +
+              `${E.estrella} Rol recibido: ${role}`,
+            color: "#57F287",
+            user:
+              interaction.user
+          }
+        );
+
         return interaction.reply({
           embeds: [
             successEmbed(
-              `${E.dinero} Compraste **${product.name}** por **${money(product.price)} monedas**.\n\n` +
+              `${E.dinero} Compraste **${product.name}**.\n\n` +
               `${E.estrella} Recibiste ${role}.\n\n` +
-              `${E.dinero} Saldo restante: **${money(user.wallet)}**`
+              `${E.dinero} Saldo: **${money(user.wallet)}**`
             )
           ]
         });
       }
-
-      // ===============================================
-      // PRODUCTO TIPO ITEM
-      // ===============================================
 
       user.wallet -=
         product.price;
@@ -2096,25 +2696,39 @@ client.on(
 
       saveData();
 
+      logAction(
+        interaction.guild,
+        "tienda",
+        {
+          title:
+            `${E.dinero} Compra de ítem`,
+          description:
+            `${interaction.user} compró **${product.name}**.\n\n` +
+            `${E.dinero} Precio: **${money(product.price)} monedas**`,
+          color: "#57F287",
+          user:
+            interaction.user
+        }
+      );
+
       return interaction.reply({
         embeds: [
           successEmbed(
-            `${E.dinero} Compraste **${product.name}** por **${money(product.price)} monedas**.\n\n` +
-            `${E.ojo} El objeto fue añadido a tu inventario.\n\n` +
-            `${E.dinero} Saldo restante: **${money(user.wallet)}**`
+            `${E.dinero} Compraste **${product.name}**.\n\n` +
+            `${E.ojo} Fue añadido a tu inventario.\n\n` +
+            `${E.dinero} Saldo: **${money(user.wallet)}**`
           )
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // USE
-    // =================================================
+    // ===============================================
 
     if (
       command === "use"
     ) {
-
       const item =
         interaction.options.getString(
           "item"
@@ -2134,11 +2748,10 @@ client.on(
         );
 
       if (index === -1) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.no} No tienes **${item}** en tu inventario.`
+              `${E.no} No tienes **${item}**.`
             )
           ],
           ephemeral: true
@@ -2152,6 +2765,19 @@ client.on(
 
       saveData();
 
+      logAction(
+        interaction.guild,
+        "tienda",
+        {
+          title:
+            `${E.ojo} Objeto utilizado`,
+          description:
+            `${interaction.user} utilizó **${item}**.`,
+          user:
+            interaction.user
+        }
+      );
+
       return interaction.reply({
         embeds: [
           successEmbed(
@@ -2161,14 +2787,13 @@ client.on(
       });
     }
 
-    // =================================================
+    // ===============================================
     // BALTOP
-    // =================================================
+    // ===============================================
 
     if (
       command === "baltop"
     ) {
-
       const ranking =
         Object.entries(
           data.users
@@ -2188,26 +2813,15 @@ client.on(
           )
           .slice(0, 10);
 
-      if (
-        ranking.length === 0
-      ) {
-
+      if (!ranking.length) {
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.triste} Todavía no hay usuarios en el ranking.`
+              `${E.triste} Todavía no hay usuarios.`
             )
           ]
         });
       }
-
-      const description =
-        ranking
-          .map(
-            (entry, index) =>
-              `${E.estrella} **#${index + 1}** <@${entry.id}> — ${E.dinero} **${money(entry.total)}**`
-          )
-          .join("\n");
 
       return interaction.reply({
         embeds: [
@@ -2217,31 +2831,30 @@ client.on(
               `${E.dinero} Ranking de economía`
             )
             .setDescription(
-              description
+              ranking
+                .map(
+                  (entry, index) =>
+                    `${E.estrella} **#${index + 1}** <@${entry.id}> — ${E.dinero} **${money(entry.total)}**`
+                )
+                .join("\n")
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Top 10"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // LEVELTOP
-    // =================================================
+    // ===============================================
 
     if (
       command === "leveltop"
     ) {
-
       const ranking =
         Object.entries(
           data.users
         )
           .sort(
             ([, a], [, b]) => {
-
               if (
                 b.level !==
                 a.level
@@ -2260,26 +2873,15 @@ client.on(
           )
           .slice(0, 10);
 
-      if (
-        ranking.length === 0
-      ) {
-
+      if (!ranking.length) {
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.triste} Todavía no hay usuarios en el ranking.`
+              `${E.triste} Todavía no hay usuarios.`
             )
           ]
         });
       }
-
-      const description =
-        ranking
-          .map(
-            ([id, user], index) =>
-              `${E.estrella} **#${index + 1}** <@${id}> — Nivel **${user.level}** • ${user.xp} XP`
-          )
-          .join("\n");
 
       return interaction.reply({
         embeds: [
@@ -2289,24 +2891,24 @@ client.on(
               `${E.estrella} Ranking de niveles`
             )
             .setDescription(
-              description
+              ranking
+                .map(
+                  ([id, user], index) =>
+                    `${E.estrella} **#${index + 1}** <@${id}> — Nivel **${user.level}** • ${user.xp} XP`
+                )
+                .join("\n")
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Top 10"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // COINFLIP
-    // =================================================
+    // ===============================================
 
     if (
       command === "coinflip"
     ) {
-
       const result =
         Math.random() < 0.5
           ? "Cara"
@@ -2320,26 +2922,23 @@ client.on(
               `${E.feliz} Coinflip`
             )
             .setDescription(
-              `${E.reloj} La moneda está girando...\n\n` +
               `${E.estrella} Resultado: **${result}**`
             )
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // 8BALL
-    // =================================================
+    // ===============================================
 
     if (
       command === "8ball"
     ) {
-
       const question =
-        interaction.options
-          .getString(
-            "pregunta"
-          );
+        interaction.options.getString(
+          "pregunta"
+        );
 
       const responses = [
         "Sí.",
@@ -2386,34 +2985,30 @@ client.on(
       });
     }
 
-    // =================================================
+    // ===============================================
     // RANDOM
-    // =================================================
+    // ===============================================
 
     if (
       command === "random"
     ) {
-
       const min =
-        interaction.options
-          .getInteger(
-            "minimo"
-          );
+        interaction.options.getInteger(
+          "minimo"
+        );
 
       const max =
-        interaction.options
-          .getInteger(
-            "maximo"
-          );
+        interaction.options.getInteger(
+          "maximo"
+        );
 
       if (
         min >= max
       ) {
-
         return interaction.reply({
           embeds: [
             errorEmbed(
-              `${E.no} El número máximo debe ser mayor que el mínimo.`
+              `${E.no} El máximo debe ser mayor que el mínimo.`
             )
           ],
           ephemeral: true
@@ -2438,14 +3033,13 @@ client.on(
       });
     }
 
-    // =================================================
+    // ===============================================
     // PING
-    // =================================================
+    // ===============================================
 
     if (
       command === "ping"
     ) {
-
       return interaction.reply({
         embeds: [
           new EmbedBuilder()
@@ -2460,14 +3054,13 @@ client.on(
       });
     }
 
-    // =================================================
+    // ===============================================
     // BOTINFO
-    // =================================================
+    // ===============================================
 
     if (
       command === "botinfo"
     ) {
-
       return interaction.reply({
         embeds: [
           new EmbedBuilder()
@@ -2476,36 +3069,28 @@ client.on(
               `${E.estrella} LRM Studio Bot`
             )
             .setThumbnail(
-              client.user
-                .displayAvatarURL()
+              client.user.displayAvatarURL()
             )
             .setDescription(
               `${E.feliz} **LRM Studio Bot**\n\n` +
-
-              `${E.dinero} Economía y banco\n` +
+              `${E.dinero} Economía\n` +
               `${E.estrella} Niveles y XP\n` +
               `${E.dinero} Tienda configurable\n` +
               `${E.ojo} Información\n` +
               `${E.feliz} Diversión\n\n` +
-
-              `${E.idea} Utiliza **.help** para consultar todos los comandos.`
+              `${E.idea} Usa **.help** para ver la ayuda.`
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // SERVERINFO
-    // =================================================
+    // ===============================================
 
     if (
       command === "serverinfo"
     ) {
-
       const guild =
         interaction.guild;
 
@@ -2518,8 +3103,7 @@ client.on(
             )
             .setThumbnail(
               guild.iconURL() ||
-              client.user
-                .displayAvatarURL()
+              client.user.displayAvatarURL()
             )
             .addFields(
               {
@@ -2547,52 +3131,43 @@ client.on(
                 name:
                   `${E.ojo} ID`,
                 value:
-                  guild.id,
-                inline: false
+                  guild.id
               }
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Server Info"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // USERINFO
-    // =================================================
+    // ===============================================
 
     if (
       command === "userinfo"
     ) {
-
       const target =
-        interaction.options
-          .getUser(
-            "usuario"
-          ) ||
+        interaction.options.getUser(
+          "usuario"
+        ) ||
         interaction.user;
 
       const member =
-        await interaction.guild
-          .members.fetch(
-            target.id
-          )
+        await interaction.guild.members
+          .fetch(target.id)
           .catch(() => null);
 
       const joined =
         member?.joinedTimestamp
           ? `<t:${Math.floor(
               member.joinedTimestamp /
-              1000
+                1000
             )}:R>`
           : "Desconocido";
 
       const created =
         `<t:${Math.floor(
           target.createdTimestamp /
-          1000
+            1000
         )}:R>`;
 
       return interaction.reply({
@@ -2624,38 +3199,30 @@ client.on(
                 name:
                   `${E.reloj} Cuenta creada`,
                 value:
-                  created,
-                inline: false
+                  created
               },
               {
                 name:
                   `${E.reloj} Entró al servidor`,
                 value:
-                  joined,
-                inline: false
+                  joined
               }
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot • User Info"
-            })
         ]
       });
     }
 
-    // =================================================
+    // ===============================================
     // AVATAR
-    // =================================================
+    // ===============================================
 
     if (
       command === "avatar"
     ) {
-
       const target =
-        interaction.options
-          .getUser(
-            "usuario"
-          ) ||
+        interaction.options.getUser(
+          "usuario"
+        ) ||
         interaction.user;
 
       return interaction.reply({
@@ -2670,10 +3237,6 @@ client.on(
                 size: 1024
               })
             )
-            .setFooter({
-              text:
-                "LRM Studio Bot • Avatar"
-            })
         ]
       });
     }
