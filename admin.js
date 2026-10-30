@@ -2,8 +2,21 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
-  PermissionsBitField
+  PermissionFlagsBits
 } = require("discord.js");
+
+// =====================================================
+// LRM STUDIO BOT
+// ADMIN.JS
+// =====================================================
+
+// Los comandos administrativos se manejan por prefijo.
+// No agregamos slash commands administrativos aquí.
+const adminCommands = [];
+
+// =====================================================
+// VARIABLES
+// =====================================================
 
 let client;
 let data;
@@ -15,12 +28,12 @@ let logAction;
 let PREFIX = ".";
 
 // =====================================================
-// ADMIN SLASH COMMANDS
+// EMOJI
 // =====================================================
 
-// Los comandos administrativos se manejan con prefix.
-// Por eso no necesitamos registrar slash commands aquí.
-const adminCommands = [];
+function E(name) {
+  return getEmoji(name);
+}
 
 // =====================================================
 // SETUP
@@ -28,919 +41,1132 @@ const adminCommands = [];
 
 function setupAdmin(
   discordClient,
-  options
+  options = {}
 ) {
   client = discordClient;
 
   data = options.data;
   saveData = options.saveData;
-
-  getEmoji =
-    options.getEmoji ||
-    (() => "");
-
-  EMOJI_ID =
-    options.EMOJI_ID ||
-    {};
-
-  sendLog =
-    options.sendLog ||
-    (async () => {});
-
-  logAction =
-    options.logAction ||
-    (() => {});
+  getEmoji = options.getEmoji;
+  EMOJI_ID = options.EMOJI_ID;
+  sendLog = options.sendLog;
+  logAction = options.logAction;
 
   PREFIX =
-    options.prefix ||
-    ".";
+    options.prefix || ".";
+}
 
-  client.on(
-    "messageCreate",
-    handleAdminMessage
-  );
+// =====================================================
+// PERMISO ADMIN
+// =====================================================
 
-  client.on(
-    "interactionCreate",
-    handleAdminInteraction
+function isAdmin(message) {
+  if (!message.member) {
+    return false;
+  }
+
+  return message.member.permissions.has(
+    PermissionFlagsBits.Administrator
   );
 }
 
 // =====================================================
-// HELPERS
+// ERROR ADMIN
 // =====================================================
 
-function E(name) {
-  return getEmoji(name);
-}
-
-function money(amount) {
-  return Number(amount)
-    .toLocaleString("es-ES");
-}
-
-function errorEmbed(text) {
+function adminError(text) {
   return new EmbedBuilder()
     .setColor("#ED4245")
     .setTitle(
-      `${E("no")} Ha ocurrido un problema`
+      `${E("no")} Acceso denegado`
     )
     .setDescription(text)
     .setFooter({
-      text: "LRM Studio Bot • Admin"
+      text:
+        "LRM Studio Bot • Administración"
     });
 }
 
-function successEmbed(text) {
-  return new EmbedBuilder()
-    .setColor("#57F287")
-    .setTitle(
-      `${E("feliz")} Completado`
-    )
-    .setDescription(text)
-    .setFooter({
-      text: "LRM Studio Bot • Admin"
-    });
-}
-
-function isAdmin(message) {
-  return message.member?.permissions.has(
-    PermissionsBitField.Flags.Administrator
-  );
-}
-
 // =====================================================
-// ADMIN MESSAGE HANDLER
+// LOG ADMIN
 // =====================================================
 
-async function handleAdminMessage(
-  message
+async function adminLog(
+  guild,
+  title,
+  description,
+  color = "#FF8A00",
+  user = null
 ) {
-  if (
-    message.author.bot ||
-    !message.guild
-  ) {
+  if (!guild) {
     return;
   }
 
-  if (
-    !message.content.startsWith(
-      PREFIX
+  try {
+    await logAction(
+      guild,
+      "admin",
+      {
+        title,
+        description,
+        color,
+        user
+      }
+    );
+  } catch (error) {
+    console.error(
+      "Error enviando admin log:",
+      error
+    );
+  }
+}
+
+// =====================================================
+// HELP ADMIN
+// =====================================================
+
+function adminHelpEmbed() {
+  return new EmbedBuilder()
+    .setColor("#FF8A00")
+    .setTitle(
+      `${E("ojo")} Panel de Administración`
     )
-  ) {
-    return;
-  }
-
-  const args =
-    message.content
-      .slice(PREFIX.length)
-      .trim()
-      .split(/ +/);
-
-  const command =
-    args.shift()?.toLowerCase();
-
-  if (!command) {
-    return;
-  }
-
-  const adminCommandsList = [
-    "admin",
-    "say",
-    "embed",
-    "setlog",
-    "logs",
-    "shopadd",
-    "shopremove",
-    "shopedit",
-    "shoplist",
-    "shopclear"
-  ];
-
-  if (
-    !adminCommandsList.includes(
-      command
+    .setDescription(
+      `${E("feliz")} **LRM Studio • Administración**\n\n` +
+      `Selecciona una categoría en el menú para consultar los comandos disponibles.\n\n` +
+      `${E("prohibido")} Esta sección solamente puede ser utilizada por usuarios con **Administrador**.`
     )
-  ) {
-    return;
-  }
-
-  if (!isAdmin(message)) {
-    return message.reply({
-      embeds: [
-        errorEmbed(
-          `${E("no")} Necesitas permisos de **Administrador**.`
-        )
-      ]
+    .setFooter({
+      text:
+        "LRM Studio Bot • Admin"
     });
-  }
+}
 
-  // =================================================
-  // .admin
-  // =================================================
+// =====================================================
+// MENÚ ADMIN
+// =====================================================
 
-  if (
-    command === "admin"
-  ) {
+function adminMenu() {
+  const menu =
+    new StringSelectMenuBuilder()
+      .setCustomId(
+        "lrm_admin_menu"
+      )
+      .setPlaceholder(
+        "Selecciona una categoría"
+      )
+      .addOptions(
+        {
+          label: "Administración",
+          description:
+            "Configuración y comandos administrativos.",
+          value: "administracion",
+          emoji: {
+            id: EMOJI_ID.idea,
+            name: "idea"
+          }
+        },
+        {
+          label: "Mensajes",
+          description:
+            "Enviar mensajes y embeds.",
+          value: "mensajes",
+          emoji: {
+            id: EMOJI_ID.feliz,
+            name: "feliz"
+          }
+        },
+        {
+          label: "Logs",
+          description:
+            "Configura y consulta los logs.",
+          value: "logs",
+          emoji: {
+            id: EMOJI_ID.ojo,
+            name: "emoji_20"
+          }
+        },
+        {
+          label: "Tienda",
+          description:
+            "Gestiona los productos de la tienda.",
+          value: "tienda",
+          emoji: {
+            id: EMOJI_ID.dinero,
+            name: "dinero"
+          }
+        }
+      );
+
+  return new ActionRowBuilder()
+    .addComponents(menu);
+}
+
+// =====================================================
+// MENSAJE ADMIN
+// =====================================================
+
+function sendAdminPanel(message) {
+  return message.reply({
+    embeds: [
+      adminHelpEmbed()
+    ],
+    components: [
+      adminMenu()
+    ]
+  });
+}
+
+// =====================================================
+// PANEL DE ADMIN
+// =====================================================
+
+client?.on(
+  "interactionCreate",
+  async interaction => {
+    if (
+      !interaction.isStringSelectMenu()
+    ) {
+      return;
+    }
+
+    if (
+      interaction.customId !==
+      "lrm_admin_menu"
+    ) {
+      return;
+    }
+
+    if (
+      !interaction.member.permissions.has(
+        PermissionFlagsBits.Administrator
+      )
+    ) {
+      return interaction.reply({
+        embeds: [
+          adminError(
+            `${E("prohibido")} No tienes permisos de **Administrador**.`
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    const category =
+      interaction.values[0];
+
     const embed =
       new EmbedBuilder()
         .setColor("#FF8A00")
-        .setTitle(
-          `${E("estrella")} Panel administrativo`
-        )
-        .setDescription(
-          `${E("feliz")} Bienvenido al panel de administración de **LRM Studio Bot**.\n\n` +
-          `Selecciona una categoría abajo para consultar las herramientas disponibles.`
-        )
         .setFooter({
           text:
-            "LRM Studio Bot • Admin"
+            "LRM Studio Bot • Administración"
         });
 
-    const menu =
-      new StringSelectMenuBuilder()
-        .setCustomId(
-          "lrm_admin_menu"
+    if (
+      category ===
+      "administracion"
+    ) {
+      embed
+        .setTitle(
+          `${E("idea")} Administración`
         )
-        .setPlaceholder(
-          "Selecciona una categoría"
-        )
-        .addOptions(
-          {
-            label: "Mensajes",
-            description:
-              "Enviar mensajes y embeds.",
-            value: "mensajes",
-            emoji: {
-              id:
-                EMOJI_ID.idea,
-              name: "idea"
-            }
-          },
-          {
-            label: "Tienda",
-            description:
-              "Administrar productos.",
-            value: "tienda",
-            emoji: {
-              id:
-                EMOJI_ID.dinero,
-              name: "dinero"
-            }
-          },
-          {
-            label: "Logs",
-            description:
-              "Configurar los registros.",
-            value: "logs",
-            emoji: {
-              id:
-                EMOJI_ID.ojo,
-              name: "emoji_20"
-            }
-          }
+        .setDescription(
+          `${E("idea")} **.admin** — Abre el panel administrativo.\n\n` +
+          `${E("prohibido")} Todos los comandos administrativos requieren permisos de **Administrador**.`
         );
+    }
 
-    return message.reply({
+    if (
+      category ===
+      "mensajes"
+    ) {
+      embed
+        .setTitle(
+          `${E("feliz")} Mensajes`
+        )
+        .setDescription(
+          `${E("feliz")} **.say <mensaje>**\n` +
+          `Envía un mensaje como el bot.\n\n` +
+
+          `${E("idea")} **.embed <color> <mensaje>**\n` +
+          `Envía un mensaje dentro de un embed.\n\n` +
+
+          `${E("estrella")} Ejemplo:\n` +
+          `\`.say ${E("feliz")} Hola\`\n\n` +
+
+          `${E("estrella")} Ejemplo embed:\n` +
+          `\`.embed #FF8A00 ${E("feliz")} Hola\``
+        );
+    }
+
+    if (
+      category ===
+      "logs"
+    ) {
+      embed
+        .setTitle(
+          `${E("ojo")} Logs`
+        )
+        .setDescription(
+          `${E("idea")} **.setlog <tipo>**\n` +
+          `Configura el canal actual como canal de logs.\n\n` +
+
+          `${E("ojo")} Tipos disponibles:\n` +
+          `• \`general\`\n` +
+          `• \`economia\`\n` +
+          `• \`tienda\`\n` +
+          `• \`niveles\`\n` +
+          `• \`admin\`\n\n` +
+
+          `${E("estrella")} **.logs**\n` +
+          `Consulta los canales configurados.`
+        );
+    }
+
+    if (
+      category ===
+      "tienda"
+    ) {
+      embed
+        .setTitle(
+          `${E("dinero")} Tienda`
+        )
+        .setDescription(
+          `${E("dinero")} **.shopadd <nombre> <precio> [tipo] [roleId]**\n` +
+          `Añade un producto.\n\n` +
+
+          `${E("no")} **.shopremove <nombre>**\n` +
+          `Elimina un producto.\n\n` +
+
+          `${E("idea")} **.shopedit <nombre> <nuevoPrecio>**\n` +
+          `Edita el precio de un producto.\n\n` +
+
+          `${E("ojo")} **.shoplist**\n` +
+          `Muestra todos los productos.\n\n` +
+
+          `${E("prohibido")} **.shopclear**\n` +
+          `Elimina todos los productos.`
+        );
+    }
+
+    await interaction.update({
       embeds: [embed],
       components: [
-        new ActionRowBuilder()
-          .addComponents(menu)
+        adminMenu()
       ]
     });
   }
+);
 
-  // =================================================
-  // .say
-  // =================================================
+// =====================================================
+// PREFIX COMMANDS
+// =====================================================
 
-  if (
-    command === "say"
-  ) {
-    const text =
-      args.join(" ");
-
-    if (!text) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            `${E("idea")} Usa: **.say mensaje**`
-          )
-        ]
-      });
+client?.on(
+  "messageCreate",
+  async message => {
+    if (message.author.bot) {
+      return;
     }
 
-    await message.delete()
-      .catch(() => {});
-
-    await message.channel.send(
-      text
-    );
-
-    logAction(
-      message.guild,
-      "admin",
-      {
-        title:
-          `${E("idea")} Mensaje enviado`,
-        description:
-          `${message.author} utilizó **.say** en ${message.channel}.\n\n` +
-          `**Contenido:**\n${text}`,
-        user:
-          message.author
-      }
-    );
-
-    return;
-  }
-
-  // =================================================
-  // .embed
-  // =================================================
-
-  if (
-    command === "embed"
-  ) {
-    const color =
-      args.shift();
-
-    const text =
-      args.join(" ");
-
-    if (
-      !color ||
-      !text
-    ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            `${E("idea")} Usa:\n**.embed #FF8A00 mensaje**`
-          )
-        ]
-      });
+    if (!message.guild) {
+      return;
     }
 
     if (
-      !/^#[0-9A-Fa-f]{6}$/.test(
-        color
+      !message.content.startsWith(
+        PREFIX
       )
     ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            `${E("no")} El color debe ser HEX.\nEjemplo: **#FF8A00**`
-          )
-        ]
-      });
+      return;
     }
 
-    await message.channel.send({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(color)
-          .setDescription(text)
-          .setFooter({
-            text:
-              "LRM Studio Bot"
-          })
-      ]
-    });
+    const args =
+      message.content
+        .slice(PREFIX.length)
+        .trim()
+        .split(/ +/);
 
-    logAction(
-      message.guild,
-      "admin",
-      {
-        title:
-          `${E("idea")} Embed enviado`,
-        description:
-          `${message.author} creó un embed en ${message.channel}.\n\n` +
-          `**Color:** ${color}\n` +
-          `**Contenido:**\n${text}`,
-        user:
-          message.author
-      }
-    );
-
-    return;
-  }
-
-  // =================================================
-  // .setlog
-  // =================================================
-
-  if (
-    command === "setlog"
-  ) {
-    const type =
+    const command =
       args.shift()?.toLowerCase();
 
-    const channel =
-      message.mentions.channels.first();
+    if (!command) {
+      return;
+    }
 
-    const validTypes = [
-      "general",
-      "economia",
-      "tienda",
-      "niveles",
-      "admin"
+    // =================================================
+    // .ADMIN
+    // =================================================
+
+    if (
+      command === "admin"
+    ) {
+      if (!isAdmin(message)) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `${E("prohibido")} Necesitas el permiso **Administrador** para utilizar este panel.`
+            )
+          ]
+        });
+      }
+
+      return sendAdminPanel(
+        message
+      );
+    }
+
+    // Los siguientes comandos requieren admin.
+    const adminCommandsList = [
+      "say",
+      "embed",
+      "setlog",
+      "logs",
+      "shopadd",
+      "shopremove",
+      "shopedit",
+      "shoplist",
+      "shopclear"
     ];
 
     if (
-      !validTypes.includes(
-        type
-      )
+      adminCommandsList.includes(
+        command
+      ) &&
+      !isAdmin(message)
     ) {
       return message.reply({
         embeds: [
-          errorEmbed(
-            `${E("no")} Tipo inválido.\n\n` +
-            `Tipos:\n` +
-            `\`general\`\n` +
-            `\`economia\`\n` +
-            `\`tienda\`\n` +
-            `\`niveles\`\n` +
-            `\`admin\``
+          adminError(
+            `${E("prohibido")} No tienes permisos de **Administrador**.`
           )
         ]
       });
     }
 
-    if (!channel) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            `${E("idea")} Debes mencionar el canal.\n\n` +
-            `Ejemplo:\n**.setlog general #logs**`
-          )
-        ]
-      });
-    }
+    // =================================================
+    // .SAY
+    // =================================================
 
-    data.settings ??= {};
-    data.settings.logs ??= {};
+    if (
+      command === "say"
+    ) {
+      const text =
+        args.join(" ");
 
-    data.settings.logs[type] =
-      channel.id;
-
-    saveData();
-
-    logAction(
-      message.guild,
-      "admin",
-      {
-        title:
-          `${E("estrella")} Log configurado`,
-        description:
-          `${message.author} configuró el log **${type}** en ${channel}.`,
-        user:
-          message.author
+      if (!text) {
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#FEE75C")
+              .setTitle(
+                `${E("idea")} Uso incorrecto`
+              )
+              .setDescription(
+                `Usa:\n\`${PREFIX}say <mensaje>\``
+              )
+          ]
+        });
       }
-    );
 
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `${E("feliz")} El log **${type}** ahora se enviará en ${channel}.`
+      try {
+        await message.delete()
+          .catch(() => {});
+
+        await message.channel.send(
+          text
+        );
+
+        await adminLog(
+          message.guild,
+          `${E("feliz")} Mensaje enviado`,
+          `${message.author} utilizó **${PREFIX}say**.\n\n` +
+          `**Contenido:**\n${text}`,
+          "#57F287",
+          message.author
+        );
+      } catch (error) {
+        console.error(
+          "Error en .say:",
+          error
+        );
+      }
+
+      return;
+    }
+
+    // =================================================
+    // .EMBED
+    // =================================================
+
+    if (
+      command === "embed"
+    ) {
+      if (
+        args.length < 2
+      ) {
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#FEE75C")
+              .setTitle(
+                `${E("idea")} Uso incorrecto`
+              )
+              .setDescription(
+                `Usa:\n\`${PREFIX}embed <color> <mensaje>\`\n\n` +
+                `Ejemplo:\n\`${PREFIX}embed #FF8A00 ${E("feliz")} Hola\``
+              )
+          ]
+        });
+      }
+
+      let color =
+        args.shift();
+
+      if (
+        !/^#[0-9A-Fa-f]{6}$/.test(
+          color
         )
-      ]
-    });
-  }
+      ) {
+        color = "#FF8A00";
+      }
 
-  // =================================================
-  // .logs
-  // =================================================
+      const text =
+        args.join(" ");
 
-  if (
-    command === "logs"
-  ) {
-    const logs =
-      data.settings?.logs || {};
-
-    const channel =
-      id =>
-        id
-          ? `<#${id}>`
-          : `${E("triste")} No configurado`;
-
-    return message.reply({
-      embeds: [
+      const embed =
         new EmbedBuilder()
-          .setColor("#FF8A00")
-          .setTitle(
-            `${E("idea")} Configuración de logs`
-          )
-          .setDescription(
-            `${E("estrella")} **General:** ${channel(logs.general)}\n` +
-            `${E("dinero")} **Economía:** ${channel(logs.economia)}\n` +
-            `${E("dinero")} **Tienda:** ${channel(logs.tienda)}\n` +
-            `${E("estrella")} **Niveles:** ${channel(logs.niveles)}\n` +
-            `${E("alerta")} **Admin:** ${channel(logs.admin)}`
-          )
-      ]
-    });
-  }
+          .setColor(color)
+          .setDescription(text)
+          .setTimestamp()
+          .setFooter({
+            text:
+              "LRM Studio Bot"
+          });
 
-  // =================================================
-  // .shopadd
-  // =================================================
+      try {
+        await message.delete()
+          .catch(() => {});
 
-  if (
-    command === "shopadd"
-  ) {
-    const type =
-      args.shift()?.toLowerCase();
+        await message.channel.send({
+          embeds: [embed]
+        });
 
-    const name =
-      args.shift();
+        await adminLog(
+          message.guild,
+          `${E("idea")} Embed enviado`,
+          `${message.author} utilizó **${PREFIX}embed**.\n\n` +
+          `**Color:** \`${color}\`\n` +
+          `**Contenido:**\n${text}`,
+          "#57F287",
+          message.author
+        );
+      } catch (error) {
+        console.error(
+          "Error en .embed:",
+          error
+        );
+      }
 
-    const price =
-      Number(args.shift());
-
-    const role =
-      message.mentions.roles.first();
-
-    if (
-      !["role", "item"].includes(
-        type
-      )
-    ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            `${E("idea")} Usa **role** o **item**.`
-          )
-        ]
-      });
+      return;
     }
 
-    if (
-      !name ||
-      !Number.isInteger(price) ||
-      price < 0
-    ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            `${E("idea")} Uso:\n` +
-            `**.shopadd item Nombre 1000**\n` +
-            `**.shopadd role Nombre 1000 @Rol**`
-          )
-        ]
-      });
-    }
+    // =================================================
+    // .SETLOG
+    // =================================================
 
     if (
-      type === "role" &&
-      !role
+      command === "setlog"
     ) {
-      return message.reply({
+      const type =
+        args[0]?.toLowerCase();
+
+      const validTypes = [
+        "general",
+        "economia",
+        "tienda",
+        "niveles",
+        "admin"
+      ];
+
+      if (
+        !validTypes.includes(
+          type
+        )
+      ) {
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#FEE75C")
+              .setTitle(
+                `${E("idea")} Tipo de log inválido`
+              )
+              .setDescription(
+                `${E("ojo")} Tipos disponibles:\n\n` +
+                validTypes
+                  .map(
+                    value =>
+                      `• \`${value}\``
+                  )
+                  .join("\n")
+              )
+          ]
+        });
+      }
+
+      data.settings ??= {};
+      data.settings.logs ??= {};
+
+      data.settings.logs[type] =
+        message.channel.id;
+
+      saveData();
+
+      await message.reply({
         embeds: [
-          errorEmbed(
-            `${E("no")} Debes mencionar el rol del producto.`
-          )
+          new EmbedBuilder()
+            .setColor("#57F287")
+            .setTitle(
+              `${E("feliz")} Log configurado`
+            )
+            .setDescription(
+              `${E("estrella")} Este canal ahora es el canal de logs de tipo **${type}**.`
+            )
         ]
       });
-    }
 
-    const exists =
-      data.shop.some(
-        product =>
-          product.name
-            .toLowerCase() ===
-          name.toLowerCase()
+      await adminLog(
+        message.guild,
+        `${E("idea")} Canal de logs configurado`,
+        `${message.author} configuró ${message.channel} como canal de logs **${type}**.`,
+        "#57F287",
+        message.author
       );
 
-    if (exists) {
+      return;
+    }
+
+    // =================================================
+    // .LOGS
+    // =================================================
+
+    if (
+      command === "logs"
+    ) {
+      data.settings ??= {};
+      data.settings.logs ??= {};
+
+      const logs =
+        data.settings.logs;
+
+      const getChannel =
+        id => {
+          if (!id) {
+            return "No configurado";
+          }
+
+          const channel =
+            message.guild.channels.cache.get(
+              id
+            );
+
+          return channel
+            ? `${channel}`
+            : `Canal eliminado (${id})`;
+        };
+
       return message.reply({
         embeds: [
-          errorEmbed(
-            `${E("alerta")} Ya existe un producto con ese nombre.`
-          )
+          new EmbedBuilder()
+            .setColor("#FF8A00")
+            .setTitle(
+              `${E("ojo")} Configuración de Logs`
+            )
+            .addFields(
+              {
+                name:
+                  `${E("idea")} General`,
+                value:
+                  getChannel(
+                    logs.general
+                  ),
+                inline: true
+              },
+              {
+                name:
+                  `${E("dinero")} Economía`,
+                value:
+                  getChannel(
+                    logs.economia
+                  ),
+                inline: true
+              },
+              {
+                name:
+                  `${E("dinero")} Tienda`,
+                value:
+                  getChannel(
+                    logs.tienda
+                  ),
+                inline: true
+              },
+              {
+                name:
+                  `${E("estrella")} Niveles`,
+                value:
+                  getChannel(
+                    logs.niveles
+                  ),
+                inline: true
+              },
+              {
+                name:
+                  `${E("ojo")} Administración`,
+                value:
+                  getChannel(
+                    logs.admin
+                  ),
+                inline: true
+              }
+            )
         ]
       });
     }
 
-    const product = {
-      name,
-      price,
-      type,
-      roleId:
+    // =================================================
+    // .SHOPADD
+    // =================================================
+
+    if (
+      command === "shopadd"
+    ) {
+      if (
+        args.length < 2
+      ) {
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#FEE75C")
+              .setTitle(
+                `${E("idea")} Uso incorrecto`
+              )
+              .setDescription(
+                `Usa:\n` +
+                `\`${PREFIX}shopadd <nombre> <precio> [tipo] [roleId]\`\n\n` +
+                `Tipos:\n` +
+                `• \`item\`\n` +
+                `• \`role\``
+              )
+          ]
+        });
+      }
+
+      const name =
+        args.shift();
+
+      const price =
+        Number(
+          args.shift()
+        );
+
+      const type =
+        (
+          args.shift() ||
+          "item"
+        ).toLowerCase();
+
+      const roleId =
+        args.shift() ||
+        null;
+
+      if (
+        !Number.isInteger(price) ||
+        price <= 0
+      ) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `${E("dinero")} El precio debe ser un número entero mayor que 0.`
+            )
+          ]
+        });
+      }
+
+      if (
+        ![
+          "item",
+          "role"
+        ].includes(type)
+      ) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `${E("no")} El tipo debe ser \`item\` o \`role\`.`
+            )
+          ]
+        });
+      }
+
+      if (
         type === "role"
-          ? role.id
-          : null
-    };
+      ) {
+        if (!roleId) {
+          return message.reply({
+            embeds: [
+              adminError(
+                `${E("prohibido")} Para un producto de tipo \`role\` necesitas indicar el ID del rol.`
+              )
+            ]
+          });
+        }
 
-    data.shop.push(
-      product
-    );
+        const role =
+          message.guild.roles.cache.get(
+            roleId
+          );
 
-    saveData();
-
-    logAction(
-      message.guild,
-      "tienda",
-      {
-        title:
-          `${E("dinero")} Producto creado`,
-        description:
-          `${message.author} creó **${name}**.\n\n` +
-          `${E("dinero")} Precio: **${money(price)} monedas**\n` +
-          `${E("idea")} Tipo: **${type}**`,
-        user:
-          message.author
+        if (!role) {
+          return message.reply({
+            embeds: [
+              adminError(
+                `${E("no")} No encontré ese rol en el servidor.`
+              )
+            ]
+          });
+        }
       }
-    );
 
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `${E("feliz")} Producto **${name}** añadido a la tienda.`
-        )
-      ]
-    });
-  }
+      const exists =
+        data.shop.some(
+          product =>
+            product.name
+              .toLowerCase() ===
+            name.toLowerCase()
+        );
 
-  // =================================================
-  // .shopremove
-  // =================================================
+      if (exists) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `${E("alerta")} Ya existe un producto con ese nombre.`
+            )
+          ]
+        });
+      }
 
-  if (
-    command === "shopremove"
-  ) {
-    const name =
-      args.join(" ");
+      data.shop.push({
+        name,
+        price,
+        type,
+        roleId:
+          type === "role"
+            ? roleId
+            : null
+      });
 
-    if (!name) {
-      return message.reply({
+      saveData();
+
+      await message.reply({
         embeds: [
-          errorEmbed(
-            `${E("idea")} Usa **.shopremove nombre**`
-          )
+          new EmbedBuilder()
+            .setColor("#57F287")
+            .setTitle(
+              `${E("dinero")} Producto añadido`
+            )
+            .setDescription(
+              `${E("estrella")} **${name}**\n\n` +
+              `${E("dinero")} Precio: **${price.toLocaleString("es-ES")} monedas**\n` +
+              `${E("idea")} Tipo: **${type}**`
+            )
         ]
       });
-    }
 
-    const index =
-      data.shop.findIndex(
-        product =>
-          product.name
-            .toLowerCase() ===
-          name.toLowerCase()
+      await adminLog(
+        message.guild,
+        `${E("dinero")} Producto añadido`,
+        `${message.author} añadió **${name}** por **${price} monedas**.`,
+        "#57F287",
+        message.author
       );
 
-    if (index === -1) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            `${E("no")} Ese producto no existe.`
-          )
-        ]
-      });
+      return;
     }
 
-    const removed =
-      data.shop[index];
-
-    data.shop.splice(
-      index,
-      1
-    );
-
-    saveData();
-
-    logAction(
-      message.guild,
-      "tienda",
-      {
-        title:
-          `${E("no")} Producto eliminado`,
-        description:
-          `${message.author} eliminó **${removed.name}** de la tienda.\n\n` +
-          `${E("dinero")} Precio anterior: **${money(removed.price)} monedas**`,
-        color: "#ED4245",
-        user:
-          message.author
-      }
-    );
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `${E("feliz")} Eliminaste **${removed.name}**.`
-        )
-      ]
-    });
-  }
-
-  // =================================================
-  // .shopedit
-  // =================================================
-
-  if (
-    command === "shopedit"
-  ) {
-    const name =
-      args.shift();
-
-    const newPrice =
-      Number(args.shift());
+    // =================================================
+    // .SHOPREMOVE
+    // =================================================
 
     if (
-      !name ||
-      !Number.isInteger(
-        newPrice
-      ) ||
-      newPrice < 0
+      command === "shopremove"
     ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            `${E("idea")} Usa **.shopedit nombre precio**`
-          )
-        ]
-      });
-    }
+      const name =
+        args.join(" ");
 
-    const product =
-      data.shop.find(
-        item =>
-          item.name
-            .toLowerCase() ===
-          name.toLowerCase()
+      if (!name) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `Usa:\n\`${PREFIX}shopremove <nombre>\``
+            )
+          ]
+        });
+      }
+
+      const index =
+        data.shop.findIndex(
+          product =>
+            product.name
+              .toLowerCase() ===
+            name.toLowerCase()
+        );
+
+      if (index === -1) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `${E("no")} No existe ese producto.`
+            )
+          ]
+        });
+      }
+
+      const product =
+        data.shop[index];
+
+      data.shop.splice(
+        index,
+        1
       );
 
-    if (!product) {
+      saveData();
+
+      await message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor("#57F287")
+            .setTitle(
+              `${E("feliz")} Producto eliminado`
+            )
+            .setDescription(
+              `${E("no")} Se eliminó **${product.name}** de la tienda.`
+            )
+        ]
+      });
+
+      await adminLog(
+        message.guild,
+        `${E("no")} Producto eliminado`,
+        `${message.author} eliminó **${product.name}** de la tienda.`,
+        "#ED4245",
+        message.author
+      );
+
+      return;
+    }
+
+    // =================================================
+    // .SHOPEDIT
+    // =================================================
+
+    if (
+      command === "shopedit"
+    ) {
+      if (
+        args.length < 2
+      ) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `Usa:\n\`${PREFIX}shopedit <nombre> <nuevoPrecio>\``
+            )
+          ]
+        });
+      }
+
+      const name =
+        args.shift();
+
+      const newPrice =
+        Number(
+          args.shift()
+        );
+
+      if (
+        !Number.isInteger(
+          newPrice
+        ) ||
+        newPrice <= 0
+      ) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `${E("dinero")} El nuevo precio no es válido.`
+            )
+          ]
+        });
+      }
+
+      const product =
+        data.shop.find(
+          product =>
+            product.name
+              .toLowerCase() ===
+            name.toLowerCase()
+        );
+
+      if (!product) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `${E("no")} No existe ese producto.`
+            )
+          ]
+        });
+      }
+
+      const oldPrice =
+        product.price;
+
+      product.price =
+        newPrice;
+
+      saveData();
+
+      await message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor("#57F287")
+            .setTitle(
+              `${E("idea")} Producto actualizado`
+            )
+            .setDescription(
+              `${E("estrella")} **${product.name}**\n\n` +
+              `${E("dinero")} Precio anterior: **${oldPrice}**\n` +
+              `${E("dinero")} Nuevo precio: **${newPrice}**`
+            )
+        ]
+      });
+
+      await adminLog(
+        message.guild,
+        `${E("idea")} Producto editado`,
+        `${message.author} cambió el precio de **${product.name}** de **${oldPrice}** a **${newPrice}**.`,
+        "#FEE75C",
+        message.author
+      );
+
+      return;
+    }
+
+    // =================================================
+    // .SHOPLIST
+    // =================================================
+
+    if (
+      command === "shoplist"
+    ) {
+      if (
+        data.shop.length === 0
+      ) {
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#FEE75C")
+              .setTitle(
+                `${E("dinero")} Tienda vacía`
+              )
+              .setDescription(
+                `${E("triste")} No hay productos configurados.`
+              )
+          ]
+        });
+      }
+
+      const description =
+        data.shop
+          .map(
+            (product, index) =>
+              `${E("estrella")} **${index + 1}. ${product.name}**\n` +
+              `${E("dinero")} Precio: **${product.price.toLocaleString("es-ES")} monedas**\n` +
+              `${E("idea")} Tipo: **${product.type}**` +
+              (
+                product.type === "role"
+                  ? `\n${E("ojo")} Rol: <@&${product.roleId}>`
+                  : ""
+              )
+          )
+          .join("\n\n");
+
       return message.reply({
         embeds: [
-          errorEmbed(
-            `${E("no")} Ese producto no existe.`
-          )
+          new EmbedBuilder()
+            .setColor("#FF8A00")
+            .setTitle(
+              `${E("dinero")} Lista de productos`
+            )
+            .setDescription(
+              description
+            )
         ]
       });
     }
 
-    const oldPrice =
-      product.price;
+    // =================================================
+    // .SHOPCLEAR
+    // =================================================
 
-    product.price =
-      newPrice;
-
-    saveData();
-
-    logAction(
-      message.guild,
-      "tienda",
-      {
-        title:
-          `${E("idea")} Producto modificado`,
-        description:
-          `${message.author} modificó **${product.name}**.\n\n` +
-          `${E("dinero")} Precio anterior: **${money(oldPrice)}**\n` +
-          `${E("dinero")} Precio nuevo: **${money(newPrice)}**`,
-        user:
-          message.author
+    if (
+      command === "shopclear"
+    ) {
+      if (
+        data.shop.length === 0
+      ) {
+        return message.reply({
+          embeds: [
+            adminError(
+              `${E("triste")} La tienda ya está vacía.`
+            )
+          ]
+        });
       }
-    );
 
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `${E("feliz")} **${product.name}** ahora cuesta **${money(newPrice)} monedas**.`
-        )
-      ]
-    });
-  }
+      const amount =
+        data.shop.length;
 
-  // =================================================
-  // .shoplist
-  // =================================================
+      data.shop = [];
 
-  if (
-    command === "shoplist"
-  ) {
-    if (!data.shop.length) {
-      return message.reply({
+      saveData();
+
+      await message.reply({
         embeds: [
-          errorEmbed(
-            `${E("triste")} La tienda está vacía.`
-          )
+          new EmbedBuilder()
+            .setColor("#57F287")
+            .setTitle(
+              `${E("feliz")} Tienda limpiada`
+            )
+            .setDescription(
+              `${E("no")} Se eliminaron **${amount} productos** de la tienda.`
+            )
         ]
       });
+
+      await adminLog(
+        message.guild,
+        `${E("no")} Tienda limpiada`,
+        `${message.author} eliminó **${amount} productos** de la tienda.`,
+        "#ED4245",
+        message.author
+      );
+
+      return;
     }
-
-    const description =
-      data.shop
-        .map(
-          (product, index) =>
-            `${E("estrella")} **${index + 1}. ${product.name}**\n` +
-            `${E("dinero")} ${money(product.price)} monedas\n` +
-            `${E("idea")} ${product.type}`
-        )
-        .join("\n\n");
-
-    return message.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor("#FF8A00")
-          .setTitle(
-            `${E("dinero")} Productos`
-          )
-          .setDescription(
-            description
-          )
-      ]
-    });
   }
-
-  // =================================================
-  // .shopclear
-  // =================================================
-
-  if (
-    command === "shopclear"
-  ) {
-    const amount =
-      data.shop.length;
-
-    data.shop = [];
-
-    saveData();
-
-    logAction(
-      message.guild,
-      "tienda",
-      {
-        title:
-          `${E("no")} Tienda limpiada`,
-        description:
-          `${message.author} eliminó **${amount} productos** de la tienda.`,
-        color: "#ED4245",
-        user:
-          message.author
-      }
-    );
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `${E("feliz")} Se eliminaron **${amount} productos** de la tienda.`
-        )
-      ]
-    });
-  }
-}
+);
 
 // =====================================================
-// ADMIN MENU
+// EXPORTS
 // =====================================================
-
-async function handleAdminInteraction(
-  interaction
-) {
-  if (
-    !interaction.isStringSelectMenu()
-  ) {
-    return;
-  }
-
-  if (
-    interaction.customId !==
-    "lrm_admin_menu"
-  ) {
-    return;
-  }
-
-  if (
-    !interaction.member.permissions.has(
-      PermissionsBitField.Flags.Administrator
-    )
-  ) {
-    return interaction.reply({
-      embeds: [
-        errorEmbed(
-          `${E("no")} No tienes permisos de Administrador.`
-        )
-      ],
-      ephemeral: true
-    });
-  }
-
-  const category =
-    interaction.values[0];
-
-  const embed =
-    new EmbedBuilder()
-      .setColor("#FF8A00")
-      .setFooter({
-        text:
-          "LRM Studio Bot • Admin"
-      });
-
-  if (
-    category === "mensajes"
-  ) {
-    embed
-      .setTitle(
-        `${E("idea")} Mensajes`
-      )
-      .setDescription(
-        `${E("feliz")} **.say mensaje**\n` +
-        `Envía un mensaje como el bot.\n\n` +
-        `${E("idea")} **.embed #HEX mensaje**\n` +
-        `Envía un embed personalizado.`
-      );
-  }
-
-  if (
-    category === "tienda"
-  ) {
-    embed
-      .setTitle(
-        `${E("dinero")} Tienda`
-      )
-      .setDescription(
-        `${E("feliz")} **.shopadd item Nombre precio**\n` +
-        `Crea un ítem.\n\n` +
-        `${E("estrella")} **.shopadd role Nombre precio @Rol**\n` +
-        `Crea un producto de rol.\n\n` +
-        `${E("no")} **.shopremove Nombre**\n` +
-        `Elimina un producto.\n\n` +
-        `${E("idea")} **.shopedit Nombre precio**\n` +
-        `Modifica el precio.\n\n` +
-        `${E("ojo")} **.shoplist**\n` +
-        `Muestra los productos.\n\n` +
-        `${E("prohibido")} **.shopclear**\n` +
-        `Elimina todos los productos.`
-      );
-  }
-
-  if (
-    category === "logs"
-  ) {
-    embed
-      .setTitle(
-        `${E("ojo")} Logs`
-      )
-      .setDescription(
-        `${E("estrella")} **.logs**\n` +
-        `Muestra la configuración.\n\n` +
-        `${E("idea")} **.setlog general #canal**\n` +
-        `Registra prácticamente todas las acciones importantes.\n\n` +
-        `${E("dinero")} **.setlog economia #canal**\n` +
-        `Registra economía.\n\n` +
-        `${E("dinero")} **.setlog tienda #canal**\n` +
-        `Registra compras y modificaciones de tienda.\n\n` +
-        `${E("estrella")} **.setlog niveles #canal**\n` +
-        `Registra subidas de nivel.\n\n` +
-        `${E("alerta")} **.setlog admin #canal**\n` +
-        `Registra acciones administrativas.`
-      );
-  }
-
-  return interaction.update({
-    embeds: [embed]
-  });
-}
 
 module.exports = {
   setupAdmin,
