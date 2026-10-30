@@ -12,9 +12,15 @@ const {
   ChannelType
 } = require("discord.js");
 
-// =====================================================
-// SLASH COMMANDS ADMIN
-// =====================================================
+const STAFF_ROLE_PING = "1565609209444175893";
+
+const channelOption = (cmd, name = "canal") =>
+  cmd.addChannelOption(o =>
+    o.setName(name)
+      .setDescription("Canal")
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(true)
+  );
 
 const adminCommands = [
   new SlashCommandBuilder()
@@ -24,114 +30,68 @@ const adminCommands = [
   new SlashCommandBuilder()
     .setName("addmoney")
     .setDescription("Añade dinero a un usuario.")
-    .addUserOption(option =>
-      option
-        .setName("usuario")
-        .setDescription("Usuario")
-        .setRequired(true)
+    .addUserOption(o =>
+      o.setName("usuario").setDescription("Usuario").setRequired(true)
     )
-    .addIntegerOption(option =>
-      option
-        .setName("cantidad")
-        .setDescription("Cantidad")
-        .setMinValue(1)
-        .setRequired(true)
+    .addIntegerOption(o =>
+      o.setName("cantidad").setDescription("Cantidad").setMinValue(1).setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("removemoney")
     .setDescription("Quita dinero a un usuario.")
-    .addUserOption(option =>
-      option
-        .setName("usuario")
-        .setDescription("Usuario")
-        .setRequired(true)
+    .addUserOption(o =>
+      o.setName("usuario").setDescription("Usuario").setRequired(true)
     )
-    .addIntegerOption(option =>
-      option
-        .setName("cantidad")
-        .setDescription("Cantidad")
-        .setMinValue(1)
-        .setRequired(true)
+    .addIntegerOption(o =>
+      o.setName("cantidad").setDescription("Cantidad").setMinValue(1).setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("panel")
     .setDescription("Crea o actualiza un panel de tickets.")
-    .addStringOption(option =>
-      option
-        .setName("nombre")
-        .setDescription("Nombre del panel")
-        .setRequired(true)
+    .addStringOption(o =>
+      o.setName("nombre").setDescription("Nombre").setRequired(true)
     )
-    .addStringOption(option =>
-      option
-        .setName("mensaje_panel")
-        .setDescription("Mensaje público del panel")
-        .setRequired(true)
+    .addStringOption(o =>
+      o.setName("mensaje_panel").setDescription("Mensaje público").setRequired(true)
     )
-    .addIntegerOption(option =>
-      option
-        .setName("preguntas")
-        .setDescription("Cantidad de preguntas")
-        .setMinValue(0)
-        .setMaxValue(2)
-        .setRequired(true)
+    .addIntegerOption(o =>
+      o.setName("preguntas").setDescription("0 a 2 preguntas").setMinValue(0).setMaxValue(2).setRequired(true)
     )
-    .addStringOption(option =>
-      option
-        .setName("emoji")
-        .setDescription("Emoji del panel")
-        .setRequired(true)
+    .addStringOption(o =>
+      o.setName("emoji").setDescription("Emoji").setRequired(true)
     )
-    .addStringOption(option =>
-      option
-        .setName("mensaje_ingreso")
-        .setDescription("Mensaje al entrar al ticket")
-        .setRequired(true)
+    .addStringOption(o =>
+      o.setName("mensaje_ingreso").setDescription("Mensaje dentro del ticket").setRequired(true)
     )
-    .addStringOption(option =>
-      option
-        .setName("pregunta1")
-        .setDescription("Primera pregunta")
+    .addStringOption(o =>
+      o.setName("pregunta1").setDescription("Primera pregunta")
     )
-    .addStringOption(option =>
-      option
-        .setName("pregunta2")
-        .setDescription("Segunda pregunta")
+    .addStringOption(o =>
+      o.setName("pregunta2").setDescription("Segunda pregunta")
     ),
 
-  new SlashCommandBuilder()
-    .setName("ticketpanel")
-    .setDescription("Envía un panel de tickets.")
-    .addChannelOption(option =>
-      option
-        .setName("canal")
-        .setDescription("Canal donde enviar el panel")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option
-        .setName("panel")
-        .setDescription("Nombre del panel")
-        .setRequired(true)
-        .setAutocomplete(true)
-    ),
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("ticketpanel")
+      .setDescription("Envía un panel de tickets.")
+  ).addStringOption(o =>
+    o.setName("panel")
+      .setDescription("Panel")
+      .setRequired(true)
+      .setAutocomplete(true)
+  ),
 
   new SlashCommandBuilder()
     .setName("staff")
-    .setDescription("Configura los permisos internos de un rol.")
-    .addRoleOption(option =>
-      option
-        .setName("rol")
-        .setDescription("Rol de staff")
-        .setRequired(true)
+    .setDescription("Configura permisos internos de un rol.")
+    .addRoleOption(o =>
+      o.setName("rol").setDescription("Rol").setRequired(true)
     )
-    .addStringOption(option =>
-      option
-        .setName("permiso")
-        .setDescription("Permiso interno")
+    .addStringOption(o =>
+      o.setName("permiso")
+        .setDescription("Permiso")
         .setRequired(true)
         .addChoices(
           { name: "Ver tickets", value: "ver_ticket" },
@@ -144,131 +104,180 @@ const adminCommands = [
           { name: "Admin total", value: "admin" }
         )
     )
-    .addStringOption(option =>
-      option
-        .setName("accion")
-        .setDescription("Añadir o quitar permiso")
+    .addStringOption(o =>
+      o.setName("accion")
+        .setDescription("Añadir o quitar")
         .addChoices(
           { name: "Añadir", value: "add" },
           { name: "Quitar", value: "remove" }
         )
     ),
 
-  new SlashCommandBuilder()
-    .setName("valoraciones")
-    .setDescription("Configura el canal de valoraciones.")
-    .addChannelOption(option =>
-      option
-        .setName("canal")
-        .setDescription("Canal de valoraciones")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    ),
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("valoraciones")
+      .setDescription("Configura valoraciones.")
+  ),
 
-  new SlashCommandBuilder()
-    .setName("transaccion")
-    .setDescription("Configura el canal de transacciones.")
-    .addChannelOption(option =>
-      option
-        .setName("canal")
-        .setDescription("Canal de transacciones")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    ),
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("transaccion")
+      .setDescription("Configura transacciones.")
+  ),
 
-  new SlashCommandBuilder()
-    .setName("ticketlogs")
-    .setDescription("Configura los logs de tickets.")
-    .addChannelOption(option =>
-      option
-        .setName("canal")
-        .setDescription("Canal de logs")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    ),
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("ticketlogs")
+      .setDescription("Configura logs de tickets.")
+  ),
 
   new SlashCommandBuilder()
     .setName("ban")
-    .setDescription("Banea a un miembro.")
-    .addUserOption(option =>
-      option
-        .setName("usuario")
-        .setDescription("Usuario")
-        .setRequired(true)
+    .setDescription("Banea a un usuario.")
+    .addUserOption(o =>
+      o.setName("usuario").setDescription("Usuario").setRequired(true)
     )
-    .addStringOption(option =>
-      option
-        .setName("razon")
-        .setDescription("Razón")
+    .addStringOption(o =>
+      o.setName("razon").setDescription("Razón")
     ),
 
   new SlashCommandBuilder()
     .setName("kick")
-    .setDescription("Expulsa a un miembro.")
-    .addUserOption(option =>
-      option
-        .setName("usuario")
-        .setDescription("Usuario")
-        .setRequired(true)
+    .setDescription("Expulsa a un usuario.")
+    .addUserOption(o =>
+      o.setName("usuario").setDescription("Usuario").setRequired(true)
     )
-    .addStringOption(option =>
-      option
-        .setName("razon")
-        .setDescription("Razón")
+    .addStringOption(o =>
+      o.setName("razon").setDescription("Razón")
     ),
 
   new SlashCommandBuilder()
     .setName("mute")
-    .setDescription("Silencia temporalmente a un miembro.")
-    .addUserOption(option =>
-      option
-        .setName("usuario")
-        .setDescription("Usuario")
-        .setRequired(true)
+    .setDescription("Silencia temporalmente a un usuario.")
+    .addUserOption(o =>
+      o.setName("usuario").setDescription("Usuario").setRequired(true)
     )
-    .addIntegerOption(option =>
-      option
-        .setName("minutos")
-        .setDescription("Duración en minutos")
-        .setMinValue(1)
-        .setMaxValue(40320)
-        .setRequired(true)
+    .addIntegerOption(o =>
+      o.setName("minutos").setDescription("Minutos").setMinValue(1).setMaxValue(40320).setRequired(true)
     )
-    .addStringOption(option =>
-      option
-        .setName("razon")
-        .setDescription("Razón")
+    .addStringOption(o =>
+      o.setName("razon").setDescription("Razón")
+    ),
+
+  new SlashCommandBuilder()
+    .setName("unmute")
+    .setDescription("Quita el timeout de un usuario.")
+    .addUserOption(o =>
+      o.setName("usuario").setDescription("Usuario").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("unban")
+    .setDescription("Desbanea un usuario por ID.")
+    .addStringOption(o =>
+      o.setName("id").setDescription("ID del usuario").setRequired(true)
+    ),
+
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("bienvenidaset")
+      .setDescription("Configura el canal de bienvenida.")
+  ),
+
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("inviteset")
+      .setDescription("Configura el canal de invitaciones.")
+  ),
+
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("niveleset")
+      .setDescription("Configura el canal de niveles.")
+  ),
+
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("alianzaset")
+      .setDescription("Configura el canal de alianzas.")
+  ),
+
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("affysset")
+      .setDescription("Configura el canal de Affys.")
+  ),
+
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("surgeset")
+      .setDescription("Configura el canal de sugerencias.")
+  ),
+
+  channelOption(
+    new SlashCommandBuilder()
+      .setName("honeypotset")
+      .setDescription("Configura e instala el Honeypot.")
+  ),
+
+  new SlashCommandBuilder()
+    .setName("honeyedit")
+    .setDescription("Modifica el mensaje del Honeypot.")
+    .addStringOption(o =>
+      o.setName("mensaje")
+        .setDescription("Nuevo mensaje")
+        .setRequired(true)
     )
 ];
 
-// =====================================================
-// VARIABLES COMPARTIDAS CON INDEX.JS
-// =====================================================
-
-let client;
-let data;
-let saveData;
-let sendLog;
-let logAction;
-let getUser;
-
+let client, data, saveData, sendLog, logAction, getUser;
 let PREFIX = ".";
-let COLORS;
-let E;
-
+let COLORS, E;
 let registered = false;
 
-// =====================================================
-// UTILIDADES
-// =====================================================
+const DEFAULT_HONEY =
+`🍯・Honeypot
 
-function ensureTicketData() {
+Este canal forma parte del sistema de seguridad de LRM Studio.
+
+⚠️ No interactúes con este canal.
+
+Cualquier interacción será detectada automáticamente y podrá activar las medidas de seguridad del servidor.
+
+🛡️ LRM Studio Security`;
+
+function ensureData() {
+  data.settings ??= {};
+  data.settings.logs ??= {};
+  data.settings.systemChannels ??= {};
+
+  for (const x of [
+    "bienvenida",
+    "invites",
+    "niveles",
+    "alianzas",
+    "affys",
+    "sugerencias",
+    "honeypot"
+  ]) data.settings.systemChannels[x] ??= null;
+
+  data.honeypot ??= {
+    message: DEFAULT_HONEY,
+    channelId: null,
+    bans: 0,
+    messageId: null
+  };
+
+  data.honeypot.message ??= DEFAULT_HONEY;
+  data.honeypot.channelId ??= null;
+  data.honeypot.bans ??= 0;
+  data.honeypot.messageId ??= null;
+
   data.ticketSystem ??= {};
   data.ticketSystem.panels ??= {};
   data.ticketSystem.staffRoles ??= {};
   data.ticketSystem.openTickets ??= {};
   data.ticketSystem.logs ??= {};
-
   data.ticketSystem.logs.valoraciones ??= null;
   data.ticketSystem.logs.transacciones ??= null;
   data.ticketSystem.logs.tickets ??= null;
@@ -277,9 +286,7 @@ function ensureTicketData() {
 function glassEmbed(color = COLORS.primary) {
   return new EmbedBuilder()
     .setColor(color)
-    .setFooter({
-      text: "LRM Studio  •  Fluent Glass"
-    });
+    .setFooter({ text: "LRM Studio  •  Fluent Glass" });
 }
 
 function errorEmbed(text) {
@@ -295,22 +302,17 @@ function successEmbed(text) {
 }
 
 function panelKey(name) {
-  const key = String(name || "")
+  return String(name || "")
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9_-]/g, "")
-    .slice(0, 40);
-
-  return key || `panel-${Date.now()}`;
+    .slice(0, 40) || `panel-${Date.now()}`;
 }
 
 function parseMenuEmoji(input) {
   const value = String(input || "").trim();
-
-  const custom = value.match(
-    /^<(a?):([A-Za-z0-9_]+):(\d+)>$/
-  );
+  const custom = value.match(/^<(a?):([A-Za-z0-9_]+):(\d+)>$/);
 
   if (custom) {
     return {
@@ -320,15 +322,7 @@ function parseMenuEmoji(input) {
     };
   }
 
-  if (value) {
-    return {
-      name: value
-    };
-  }
-
-  return {
-    name: "🎫"
-  };
+  return { name: value || "🎫" };
 }
 
 function replaceVariables(text, user, guild, panel, staff = null) {
@@ -337,24 +331,15 @@ function replaceVariables(text, user, guild, panel, staff = null) {
     .replaceAll("{user}", `${user}`)
     .replaceAll("{servidor}", guild.name)
     .replaceAll("{panel}", panel?.name || panel || "Ticket")
-    .replaceAll(
-      "{staff}",
-      staff ? `${staff}` : "Sin reclamar"
-    );
+    .replaceAll("{staff}", staff ? `${staff}` : "Sin reclamar");
 }
 
-// =====================================================
-// PERMISOS INTERNOS
-// =====================================================
-
 function discordAdmin(member) {
-  return member?.permissions?.has(
-    PermissionFlagsBits.Administrator
-  );
+  return member?.permissions?.has(PermissionFlagsBits.Administrator);
 }
 
 function getMemberPermissions(member) {
-  ensureTicketData();
+  ensureData();
 
   const permissions = new Set();
 
@@ -366,8 +351,7 @@ function getMemberPermissions(member) {
   }
 
   for (const role of member.roles.cache.values()) {
-    const stored =
-      data.ticketSystem.staffRoles[role.id];
+    const stored = data.ticketSystem.staffRoles[role.id];
 
     if (!Array.isArray(stored)) continue;
 
@@ -384,66 +368,41 @@ function hasStaffPermission(member, permission) {
 
   const permissions = getMemberPermissions(member);
 
-  if (permissions.has("admin")) {
-    return true;
-  }
+  if (permissions.has("admin")) return true;
 
   if (
     permissions.has("gestionar_tickets") &&
-    [
-      "ver_ticket",
-      "cerrar_ticket",
-      "reclamar_ticket"
-    ].includes(permission)
-  ) {
-    return true;
-  }
+    ["ver_ticket", "cerrar_ticket", "reclamar_ticket"].includes(permission)
+  ) return true;
 
   return permissions.has(permission);
 }
 
 function canManageSystem(member) {
-  return (
-    discordAdmin(member) ||
-    getMemberPermissions(member).has("admin")
-  );
+  return discordAdmin(member) || getMemberPermissions(member).has("admin");
 }
 
 function getTicketViewerRoles(guild) {
-  ensureTicketData();
-
   const roles = [];
 
-  for (const [roleId, permissions] of Object.entries(
-    data.ticketSystem.staffRoles
-  )) {
+  for (const [roleId, permissions] of Object.entries(data.ticketSystem.staffRoles)) {
     if (!guild.roles.cache.has(roleId)) continue;
 
     if (
       permissions.includes("ver_ticket") ||
       permissions.includes("gestionar_tickets") ||
       permissions.includes("admin")
-    ) {
-      roles.push(roleId);
-    }
+    ) roles.push(roleId);
   }
 
   return roles;
 }
 
-// =====================================================
-// LOGS DE TICKETS
-// =====================================================
-
 async function ticketLog(guild, title, description, color = COLORS.info) {
-  ensureTicketData();
+  const id = data.ticketSystem.logs.tickets;
+  if (!id) return;
 
-  const channelId = data.ticketSystem.logs.tickets;
-
-  if (!channelId) return;
-
-  const channel = guild.channels.cache.get(channelId);
-
+  const channel = guild.channels.cache.get(id);
   if (!channel?.isTextBased()) return;
 
   await channel.send({
@@ -457,52 +416,36 @@ async function ticketLog(guild, title, description, color = COLORS.info) {
 }
 
 async function ratingLog(guild, user, rating, ticket) {
-  const channelId =
-    data.ticketSystem.logs.valoraciones;
+  const id = data.ticketSystem.logs.valoraciones;
+  if (!id) return;
 
-  if (!channelId) return;
-
-  const channel = guild.channels.cache.get(channelId);
-
+  const channel = guild.channels.cache.get(id);
   if (!channel?.isTextBased()) return;
-
-  const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
 
   await channel.send({
     embeds: [
       glassEmbed(COLORS.level)
         .setTitle(`${E.level}  Nueva valoración`)
         .setDescription(
-          `${E.user} Usuario: ${user}\n` +
-          `${E.info} Panel: **${ticket.panelName}**\n` +
-          `${E.level} Valoración: **${rating}/5**\n\n` +
-          `${stars}`
+          `${user}\nPanel: **${ticket.panelName}**\n` +
+          `Valoración: **${rating}/5**\n\n` +
+          `${"★".repeat(rating)}${"☆".repeat(5 - rating)}`
         )
         .setTimestamp()
     ]
   }).catch(() => {});
 }
 
-// =====================================================
-// ACTUALIZAR PERMISOS DE TICKETS EXISTENTES
-// =====================================================
-
 async function syncRoleTicketPermissions(guild, roleId) {
-  ensureTicketData();
-
-  const permissions =
-    data.ticketSystem.staffRoles[roleId] || [];
+  const permissions = data.ticketSystem.staffRoles[roleId] || [];
 
   const shouldView =
     permissions.includes("ver_ticket") ||
     permissions.includes("gestionar_tickets") ||
     permissions.includes("admin");
 
-  for (const channelId of Object.keys(
-    data.ticketSystem.openTickets
-  )) {
+  for (const channelId of Object.keys(data.ticketSystem.openTickets)) {
     const channel = guild.channels.cache.get(channelId);
-
     if (!channel) continue;
 
     if (shouldView) {
@@ -512,40 +455,25 @@ async function syncRoleTicketPermissions(guild, roleId) {
         ReadMessageHistory: true
       }).catch(() => {});
     } else {
-      await channel.permissionOverwrites
-        .delete(roleId)
-        .catch(() => {});
+      await channel.permissionOverwrites.delete(roleId).catch(() => {});
     }
   }
 }
 
-// =====================================================
-// CREAR TICKET
-// =====================================================
-
 async function createTicket(interaction, panel, answers = []) {
-  ensureTicketData();
-
   const guild = interaction.guild;
   const user = interaction.user;
 
-  const duplicate = Object.entries(
-    data.ticketSystem.openTickets
-  ).find(([channelId, ticket]) => {
-    return (
+  const duplicate = Object.entries(data.ticketSystem.openTickets)
+    .find(([channelId, ticket]) =>
       ticket.userId === user.id &&
       ticket.panelName === panel.name &&
       guild.channels.cache.has(channelId)
     );
-  });
 
   if (duplicate) {
     return interaction.reply({
-      embeds: [
-        errorEmbed(
-          `Ya tienes un ticket abierto de **${panel.name}**: <#${duplicate[0]}>`
-        )
-      ],
+      embeds: [errorEmbed(`Ya tienes un ticket abierto: <#${duplicate[0]}>`)],
       ephemeral: true
     });
   }
@@ -553,9 +481,7 @@ async function createTicket(interaction, panel, answers = []) {
   const overwrites = [
     {
       id: guild.roles.everyone.id,
-      deny: [
-        PermissionFlagsBits.ViewChannel
-      ]
+      deny: [PermissionFlagsBits.ViewChannel]
     },
     {
       id: user.id,
@@ -575,17 +501,14 @@ async function createTicket(interaction, panel, answers = []) {
       allow: [
         PermissionFlagsBits.ViewChannel,
         PermissionFlagsBits.SendMessages,
-        PermissionFlagsBits.ReadMessageHistory,
-        PermissionFlagsBits.AttachFiles
+        PermissionFlagsBits.ReadMessageHistory
       ]
     });
   }
 
   const username =
-    user.username
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "")
-      .slice(0, 15) || "usuario";
+    user.username.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 15) ||
+    "usuario";
 
   const channel = await guild.channels.create({
     name: `ticket-${username}`,
@@ -616,26 +539,26 @@ async function createTicket(interaction, panel, answers = []) {
     description += "\n\n### Formulario";
 
     for (const answer of answers) {
-      description +=
-        `\n\n**${answer.question}**\n${answer.answer}`;
+      description += `\n\n**${answer.question}**\n${answer.answer}`;
     }
   }
 
-  const buttons = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId(`ticket_claim:${channel.id}`)
-        .setLabel("Reclamar")
-        .setStyle(ButtonStyle.Primary),
+  const buttons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`ticket_claim:${channel.id}`)
+      .setLabel("Reclamar")
+      .setStyle(ButtonStyle.Primary),
 
-      new ButtonBuilder()
-        .setCustomId(`ticket_close:${channel.id}`)
-        .setLabel("Cerrar")
-        .setStyle(ButtonStyle.Danger)
-    );
+    new ButtonBuilder()
+      .setCustomId(`ticket_close:${channel.id}`)
+      .setLabel("Cerrar")
+      .setStyle(ButtonStyle.Danger)
+  );
 
+  // CAMBIO PEDIDO:
+  // usuario + rol fuera del embed.
   await channel.send({
-    content: `${user}`,
+    content: `${user} <@&${STAFF_ROLE_PING}>`,
     embeds: [
       glassEmbed(COLORS.primary)
         .setTitle(`${panel.emoji || "🎫"}  ${panel.name}`)
@@ -646,33 +569,21 @@ async function createTicket(interaction, panel, answers = []) {
 
   await ticketLog(
     guild,
-    `${E.success}  Ticket creado`,
-    `${user} creó ${channel}.\n\nPanel: **${panel.name}**`,
+    `${E.success} Ticket creado`,
+    `${user} creó ${channel}.\nPanel: **${panel.name}**`,
     COLORS.success
   );
 
   return interaction.reply({
-    embeds: [
-      successEmbed(
-        `Tu ticket fue creado: ${channel}`
-      )
-    ],
+    embeds: [successEmbed(`Tu ticket fue creado: ${channel}`)],
     ephemeral: true
   });
 }
 
-// =====================================================
-// CERRAR TICKET
-// =====================================================
-
 async function requestTicketClose(interaction, ticket) {
   if (ticket.closing) {
     return interaction.reply({
-      embeds: [
-        errorEmbed(
-          "Este ticket ya está en proceso de cierre."
-        )
-      ],
+      embeds: [errorEmbed("Este ticket ya está cerrándose.")],
       ephemeral: true
     });
   }
@@ -680,275 +591,253 @@ async function requestTicketClose(interaction, ticket) {
   ticket.closing = true;
   saveData();
 
-  const row = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId(`ticket_rating:1:${interaction.channel.id}`)
-        .setLabel("1")
-        .setStyle(ButtonStyle.Secondary),
+  const row = new ActionRowBuilder();
 
+  for (let i = 1; i <= 5; i++) {
+    row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`ticket_rating:2:${interaction.channel.id}`)
-        .setLabel("2")
-        .setStyle(ButtonStyle.Secondary),
-
-      new ButtonBuilder()
-        .setCustomId(`ticket_rating:3:${interaction.channel.id}`)
-        .setLabel("3")
-        .setStyle(ButtonStyle.Secondary),
-
-      new ButtonBuilder()
-        .setCustomId(`ticket_rating:4:${interaction.channel.id}`)
-        .setLabel("4")
-        .setStyle(ButtonStyle.Primary),
-
-      new ButtonBuilder()
-        .setCustomId(`ticket_rating:5:${interaction.channel.id}`)
-        .setLabel("5")
-        .setStyle(ButtonStyle.Success)
+        .setCustomId(`ticket_rating:${i}:${interaction.channel.id}`)
+        .setLabel(String(i))
+        .setStyle(
+          i === 5
+            ? ButtonStyle.Success
+            : i === 4
+              ? ButtonStyle.Primary
+              : ButtonStyle.Secondary
+        )
     );
+  }
 
   return interaction.reply({
     content: `<@${ticket.userId}>`,
     embeds: [
       glassEmbed(COLORS.level)
-        .setTitle(`${E.level}  Valora la atención`)
-        .setDescription(
-          `Selecciona una valoración del **1 al 5** antes de cerrar el ticket.\n\n` +
-          `**1**  Muy mala\n` +
-          `**2**  Mala\n` +
-          `**3**  Normal\n` +
-          `**4**  Buena\n` +
-          `**5**  Excelente`
-        )
+        .setTitle("✦ Valora la atención")
+        .setDescription("Selecciona una valoración del **1 al 5**.")
     ],
     components: [row]
   });
 }
 
-// =====================================================
-// PANEL ADMIN
-// =====================================================
-
 function adminMenu() {
-  return new ActionRowBuilder()
-    .addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId("lrm_admin_menu")
-        .setPlaceholder("LRM Studio • Administración")
-        .addOptions(
-          {
-            label: "Administración",
-            value: "administracion",
-            description: "Herramientas administrativas"
-          },
-          {
-            label: "Tickets",
-            value: "tickets",
-            description: "Paneles, staff y logs"
-          },
-          {
-            label: "Economía",
-            value: "economia",
-            description: "Administrar balances"
-          },
-          {
-            label: "Mensajes",
-            value: "mensajes",
-            description: "Say y embeds"
-          },
-          {
-            label: "Tienda",
-            value: "tienda",
-            description: "Administrar productos"
-          },
-          {
-            label: "Logs",
-            value: "logs",
-            description: "Configuración de logs"
-          }
-        )
-    );
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("lrm_admin_menu")
+      .setPlaceholder("LRM Studio • Administración")
+      .addOptions(
+        {
+          label: "Moderación",
+          value: "moderacion",
+          description: "Ban, mute, kick..."
+        },
+        {
+          label: "Tickets",
+          value: "tickets",
+          description: "Tickets y staff"
+        },
+        {
+          label: "Sistemas",
+          value: "sistemas",
+          description: "Bienvenida, invites, niveles..."
+        },
+        {
+          label: "Economía",
+          value: "economia",
+          description: "Administrar balances"
+        },
+        {
+          label: "Seguridad",
+          value: "seguridad",
+          description: "HoneyPot"
+        }
+      )
+  );
 }
 
 async function showAdmin(target, slash = false) {
-  const payload = {
+  return target.reply({
     embeds: [
       glassEmbed(COLORS.admin)
-        .setTitle(`${E.admin}  LRM Studio Admin`)
-        .setDescription(
-          `Panel administrativo de **LRM Studio**.\n\n` +
-          `Selecciona una sección para ver sus comandos.`
-        )
+        .setTitle("⚙ LRM Studio Admin")
+        .setDescription("Selecciona una sección.")
     ],
-    components: [adminMenu()]
-  };
-
-  if (slash) {
-    payload.ephemeral = true;
-  }
-
-  return target.reply(payload);
+    components: [adminMenu()],
+    ...(slash ? { ephemeral: true } : {})
+  });
 }
 
-// =====================================================
-// SLASH HANDLER
-// =====================================================
+async function setSystemChannel(interaction, key, title) {
+  const channel = interaction.options.getChannel("canal");
+
+  data.settings.systemChannels[key] = channel.id;
+  saveData();
+
+  return interaction.reply({
+    embeds: [successEmbed(`${title} → ${channel}`)]
+  });
+}
+
+async function installHoneyPot(guild, channel) {
+  data.honeypot.channelId = channel.id;
+  data.settings.systemChannels.honeypot = channel.id;
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("honeypot_counter")
+      .setLabel(`Ban: ${data.honeypot.bans}`)
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(true)
+  );
+
+  const sent = await channel.send({
+    embeds: [
+      glassEmbed(COLORS.warning)
+        .setDescription(data.honeypot.message)
+    ],
+    components: [row]
+  });
+
+  data.honeypot.messageId = sent.id;
+  saveData();
+}
+
+async function handleModerationSlash(interaction, command) {
+  const permission =
+    command === "unmute"
+      ? "mute"
+      : command === "unban"
+        ? "ban"
+        : command;
+
+  if (!hasStaffPermission(interaction.member, permission)) {
+    return interaction.reply({
+      embeds: [errorEmbed(`No tienes permiso **${permission}**.`)],
+      ephemeral: true
+    });
+  }
+
+  if (command === "unban") {
+    const id = interaction.options.getString("id");
+
+    try {
+      await interaction.guild.members.unban(
+        id,
+        `Unban por ${interaction.user.tag}`
+      );
+
+      return interaction.reply({
+        embeds: [successEmbed(`Usuario \`${id}\` desbaneado.`)]
+      });
+    } catch {
+      return interaction.reply({
+        embeds: [errorEmbed("No pude desbanear ese ID.")],
+        ephemeral: true
+      });
+    }
+  }
+
+  const user = interaction.options.getUser("usuario");
+
+  const member = await interaction.guild.members
+    .fetch(user.id)
+    .catch(() => null);
+
+  if (!member) {
+    return interaction.reply({
+      embeds: [errorEmbed("No encontré ese miembro.")],
+      ephemeral: true
+    });
+  }
+
+  const reason =
+    interaction.options.getString("razon") ||
+    `Moderación por ${interaction.user.tag}`;
+
+  if (command === "ban") {
+    if (!member.bannable) {
+      return interaction.reply({
+        embeds: [errorEmbed("No puedo banear a ese miembro.")],
+        ephemeral: true
+      });
+    }
+
+    await member.ban({ reason });
+
+    await logAction(interaction.guild, "admin", {
+      title: "⚙ Ban",
+      description: `${interaction.user} baneó a ${user}.\nRazón: **${reason}**`,
+      color: COLORS.error
+    });
+
+    return interaction.reply({
+      embeds: [successEmbed(`${user.tag} fue baneado.`)]
+    });
+  }
+
+  if (command === "kick") {
+    if (!member.kickable) {
+      return interaction.reply({
+        embeds: [errorEmbed("No puedo expulsar a ese miembro.")],
+        ephemeral: true
+      });
+    }
+
+    await member.kick(reason);
+
+    return interaction.reply({
+      embeds: [successEmbed(`${user.tag} fue expulsado.`)]
+    });
+  }
+
+  if (command === "mute") {
+    const minutes = interaction.options.getInteger("minutos");
+
+    if (!member.moderatable) {
+      return interaction.reply({
+        embeds: [errorEmbed("No puedo silenciar a ese miembro.")],
+        ephemeral: true
+      });
+    }
+
+    await member.timeout(minutes * 60_000, reason);
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `${user.tag} fue silenciado durante **${minutes} minutos**.`
+        )
+      ]
+    });
+  }
+
+  if (command === "unmute") {
+    if (!member.moderatable) {
+      return interaction.reply({
+        embeds: [errorEmbed("No puedo modificar a ese miembro.")],
+        ephemeral: true
+      });
+    }
+
+    await member.timeout(null, `Unmute por ${interaction.user.tag}`);
+
+    return interaction.reply({
+      embeds: [successEmbed(`Se quitó el mute de ${user}.`)]
+    });
+  }
+}
 
 async function handleSlash(interaction) {
   const command = interaction.commandName;
 
-  if (!adminCommands.some(c => c.name === command)) {
-    return;
-  }
+  if (!adminCommands.some(c => c.name === command)) return;
 
-  // Moderación usa permisos separados.
-  if (["ban", "kick", "mute"].includes(command)) {
-    const permission = command;
-
-    if (!hasStaffPermission(interaction.member, permission)) {
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            `No tienes el permiso interno **${permission}**.`
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    const user =
-      interaction.options.getUser("usuario");
-
-    const member =
-      await interaction.guild.members
-        .fetch(user.id)
-        .catch(() => null);
-
-    if (!member) {
-      return interaction.reply({
-        embeds: [
-          errorEmbed("No encontré a ese miembro.")
-        ],
-        ephemeral: true
-      });
-    }
-
-    const reason =
-      interaction.options.getString("razon") ||
-      `Moderación por ${interaction.user.tag}`;
-
-    if (command === "ban") {
-      if (!member.bannable) {
-        return interaction.reply({
-          embeds: [
-            errorEmbed("No puedo banear a ese miembro.")
-          ],
-          ephemeral: true
-        });
-      }
-
-      await member.ban({
-        reason
-      });
-
-      await logAction(
-        interaction.guild,
-        "admin",
-        {
-          title: `${E.admin} Ban`,
-          description:
-            `${interaction.user} baneó a ${user}.\n\n` +
-            `Razón: **${reason}**`,
-          color: COLORS.error
-        }
-      );
-
-      return interaction.reply({
-        embeds: [
-          successEmbed(`${user.tag} fue baneado.`)
-        ]
-      });
-    }
-
-    if (command === "kick") {
-      if (!member.kickable) {
-        return interaction.reply({
-          embeds: [
-            errorEmbed("No puedo expulsar a ese miembro.")
-          ],
-          ephemeral: true
-        });
-      }
-
-      await member.kick(reason);
-
-      await logAction(
-        interaction.guild,
-        "admin",
-        {
-          title: `${E.admin} Kick`,
-          description:
-            `${interaction.user} expulsó a ${user}.\n\n` +
-            `Razón: **${reason}**`,
-          color: COLORS.warning
-        }
-      );
-
-      return interaction.reply({
-        embeds: [
-          successEmbed(`${user.tag} fue expulsado.`)
-        ]
-      });
-    }
-
-    if (command === "mute") {
-      const minutes =
-        interaction.options.getInteger("minutos");
-
-      if (!member.moderatable) {
-        return interaction.reply({
-          embeds: [
-            errorEmbed("No puedo silenciar a ese miembro.")
-          ],
-          ephemeral: true
-        });
-      }
-
-      await member.timeout(
-        minutes * 60_000,
-        reason
-      );
-
-      await logAction(
-        interaction.guild,
-        "admin",
-        {
-          title: `${E.admin} Mute`,
-          description:
-            `${interaction.user} silenció a ${user} durante **${minutes} minutos**.\n\n` +
-            `Razón: **${reason}**`,
-          color: COLORS.warning
-        }
-      );
-
-      return interaction.reply({
-        embeds: [
-          successEmbed(
-            `${user.tag} fue silenciado durante **${minutes} minutos**.`
-          )
-        ]
-      });
-    }
+  if (["ban", "kick", "mute", "unmute", "unban"].includes(command)) {
+    return handleModerationSlash(interaction, command);
   }
 
   if (!canManageSystem(interaction.member)) {
     return interaction.reply({
-      embeds: [
-        errorEmbed(
-          "Necesitas el permiso interno **admin** o Administrador de Discord."
-        )
-      ],
+      embeds: [errorEmbed("Necesitas permisos administrativos.")],
       ephemeral: true
     });
   }
@@ -957,344 +846,218 @@ async function handleSlash(interaction) {
     return showAdmin(interaction, true);
   }
 
-  // ADD MONEY
-  if (command === "addmoney") {
-    const user =
-      interaction.options.getUser("usuario");
-
-    const amount =
-      interaction.options.getInteger("cantidad");
-
+  if (command === "addmoney" || command === "removemoney") {
+    const user = interaction.options.getUser("usuario");
+    const amount = interaction.options.getInteger("cantidad");
     const account = getUser(user.id);
 
-    account.wallet += amount;
-    saveData();
+    if (command === "addmoney") {
+      account.wallet += amount;
+    } else {
+      account.wallet -= Math.min(Math.max(account.wallet, 0), amount);
+    }
 
-    await logAction(
-      interaction.guild,
-      "economia",
-      {
-        title: `${E.gain} Dinero añadido`,
-        description:
-          `${interaction.user} añadió **$${amount.toLocaleString("es-ES")}** a ${user}.\n\n` +
-          `Saldo: **$${account.wallet.toLocaleString("es-ES")}**`,
-        color: COLORS.success
-      }
-    );
+    saveData();
 
     return interaction.reply({
       embeds: [
         successEmbed(
-          `Añadiste **$${amount.toLocaleString("es-ES")}** a ${user}.\n\n` +
-          `Nuevo wallet: **$${account.wallet.toLocaleString("es-ES")}**`
+          `${user}\nWallet: **$${account.wallet.toLocaleString("es-ES")}**`
         )
       ]
     });
   }
 
-  // REMOVE MONEY
-  if (command === "removemoney") {
-    const user =
-      interaction.options.getUser("usuario");
+  const channelCommands = {
+    bienvenidaset: ["bienvenida", "Bienvenidas"],
+    inviteset: ["invites", "Invites"],
+    niveleset: ["niveles", "Niveles"],
+    alianzaset: ["alianzas", "Alianzas"],
+    affysset: ["affys", "Affys"],
+    surgeset: ["sugerencias", "Sugerencias"]
+  };
 
-    const amount =
-      interaction.options.getInteger("cantidad");
+  if (channelCommands[command]) {
+    const [key, title] = channelCommands[command];
+    return setSystemChannel(interaction, key, title);
+  }
 
-    const account = getUser(user.id);
+  if (command === "honeypotset") {
+    const channel = interaction.options.getChannel("canal");
 
-    const removed = Math.min(account.wallet, amount);
-
-    account.wallet -= removed;
-    saveData();
-
-    await logAction(
-      interaction.guild,
-      "economia",
-      {
-        title: `${E.loss} Dinero retirado`,
-        description:
-          `${interaction.user} quitó **$${removed.toLocaleString("es-ES")}** a ${user}.\n\n` +
-          `Saldo: **$${account.wallet.toLocaleString("es-ES")}**`,
-        color: COLORS.warning
-      }
-    );
+    await installHoneyPot(interaction.guild, channel);
 
     return interaction.reply({
-      embeds: [
-        successEmbed(
-          `Quitaste **$${removed.toLocaleString("es-ES")}** a ${user}.\n\n` +
-          `Nuevo wallet: **$${account.wallet.toLocaleString("es-ES")}**`
-        )
-      ]
+      embeds: [successEmbed(`HoneyPot instalado en ${channel}.`)],
+      ephemeral: true
     });
   }
 
-  // PANEL
+  if (command === "honeyedit") {
+    data.honeypot.message = interaction.options.getString("mensaje");
+    saveData();
+
+    return interaction.reply({
+      embeds: [successEmbed("Mensaje del HoneyPot actualizado.")],
+      ephemeral: true
+    });
+  }
+
   if (command === "panel") {
-    ensureTicketData();
-
-    const name =
-      interaction.options.getString("nombre").trim();
-
+    const name = interaction.options.getString("nombre").trim();
     const key = panelKey(name);
+    const count = interaction.options.getInteger("preguntas");
 
-    const questionCount =
-      interaction.options.getInteger("preguntas");
+    const q1 = interaction.options.getString("pregunta1");
+    const q2 = interaction.options.getString("pregunta2");
 
-    const question1 =
-      interaction.options.getString("pregunta1");
-
-    const question2 =
-      interaction.options.getString("pregunta2");
-
-    if (questionCount >= 1 && !question1) {
+    if (count >= 1 && !q1) {
       return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "Seleccionaste al menos una pregunta, pero falta `pregunta1`."
-          )
-        ],
+        embeds: [errorEmbed("Falta `pregunta1`.")],
         ephemeral: true
       });
     }
 
-    if (questionCount === 2 && !question2) {
+    if (count === 2 && !q2) {
       return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "Seleccionaste dos preguntas, pero falta `pregunta2`."
-          )
-        ],
+        embeds: [errorEmbed("Falta `pregunta2`.")],
         ephemeral: true
       });
     }
 
     const questions = [];
-
-    if (questionCount >= 1) {
-      questions.push(question1);
-    }
-
-    if (questionCount >= 2) {
-      questions.push(question2);
-    }
+    if (count >= 1) questions.push(q1);
+    if (count >= 2) questions.push(q2);
 
     data.ticketSystem.panels[key] = {
       key,
       name,
-      panelMessage:
-        interaction.options.getString("mensaje_panel"),
-      emoji:
-        interaction.options.getString("emoji"),
-      entryMessage:
-        interaction.options.getString("mensaje_ingreso"),
+      panelMessage: interaction.options.getString("mensaje_panel"),
+      emoji: interaction.options.getString("emoji"),
+      entryMessage: interaction.options.getString("mensaje_ingreso"),
       questions
     };
 
     saveData();
 
     return interaction.reply({
-      embeds: [
-        successEmbed(
-          `Panel **${name}** guardado.\n\n` +
-          `${E.info} ID: \`${key}\`\n` +
-          `${E.info} Preguntas: **${questions.length}/2**`
-        )
-      ],
+      embeds: [successEmbed(`Panel **${name}** guardado.`)],
       ephemeral: true
     });
   }
 
-  // TICKET PANEL
   if (command === "ticketpanel") {
-    ensureTicketData();
-
-    const channel =
-      interaction.options.getChannel("canal");
-
-    const value =
-      interaction.options.getString("panel");
+    const channel = interaction.options.getChannel("canal");
+    const value = interaction.options.getString("panel");
 
     const panel =
       data.ticketSystem.panels[value] ||
-      Object.values(data.ticketSystem.panels)
-        .find(
-          p =>
-            p.name.toLowerCase() ===
-            value.toLowerCase()
-        );
+      Object.values(data.ticketSystem.panels).find(
+        p => p.name.toLowerCase() === value.toLowerCase()
+      );
 
     if (!panel) {
       return interaction.reply({
-        embeds: [
-          errorEmbed("No encontré ese panel.")
-        ],
+        embeds: [errorEmbed("No encontré ese panel.")],
         ephemeral: true
       });
     }
 
-    const menu =
-      new StringSelectMenuBuilder()
-        .setCustomId(`ticket_create:${panel.key}`)
-        .setPlaceholder("Selecciona para crear un ticket")
-        .addOptions({
-          label: panel.name.slice(0, 100),
-          value: "create",
-          description: "Abrir un nuevo ticket",
-          emoji: parseMenuEmoji(panel.emoji)
-        });
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`ticket_create:${panel.key}`)
+      .setPlaceholder("Selecciona para crear un ticket")
+      .addOptions({
+        label: panel.name.slice(0, 100),
+        value: "create",
+        description: "Abrir un nuevo ticket",
+        emoji: parseMenuEmoji(panel.emoji)
+      });
 
     await channel.send({
       embeds: [
         glassEmbed(COLORS.primary)
-          .setTitle(`${panel.emoji || "🎫"}  ${panel.name}`)
+          .setTitle(`${panel.emoji || "🎫"} ${panel.name}`)
           .setDescription(panel.panelMessage)
       ],
       components: [
-        new ActionRowBuilder()
-          .addComponents(menu)
+        new ActionRowBuilder().addComponents(menu)
       ]
     });
 
     return interaction.reply({
-      embeds: [
-        successEmbed(
-          `Panel **${panel.name}** enviado en ${channel}.`
-        )
-      ],
+      embeds: [successEmbed(`Panel enviado en ${channel}.`)],
       ephemeral: true
     });
   }
 
-  // STAFF
   if (command === "staff") {
-    const role =
-      interaction.options.getRole("rol");
-
-    const permission =
-      interaction.options.getString("permiso");
-
-    const action =
-      interaction.options.getString("accion") || "add";
+    const role = interaction.options.getRole("rol");
+    const permission = interaction.options.getString("permiso");
+    const action = interaction.options.getString("accion") || "add";
 
     data.ticketSystem.staffRoles[role.id] ??= [];
 
-    const list =
-      data.ticketSystem.staffRoles[role.id];
-
     if (action === "add") {
-      if (!list.includes(permission)) {
-        list.push(permission);
+      if (!data.ticketSystem.staffRoles[role.id].includes(permission)) {
+        data.ticketSystem.staffRoles[role.id].push(permission);
       }
     } else {
       data.ticketSystem.staffRoles[role.id] =
-        list.filter(p => p !== permission);
+        data.ticketSystem.staffRoles[role.id].filter(p => p !== permission);
     }
 
     saveData();
-
-    await syncRoleTicketPermissions(
-      interaction.guild,
-      role.id
-    );
+    await syncRoleTicketPermissions(interaction.guild, role.id);
 
     return interaction.reply({
       embeds: [
         successEmbed(
-          action === "add"
-            ? `Permiso **${permission}** añadido a ${role}.`
-            : `Permiso **${permission}** eliminado de ${role}.`
+          `${action === "add" ? "Añadido" : "Eliminado"} **${permission}** en ${role}.`
         )
       ]
     });
   }
 
-  if (command === "valoraciones") {
-    const channel =
-      interaction.options.getChannel("canal");
+  const logMap = {
+    valoraciones: "valoraciones",
+    transaccion: "transacciones",
+    ticketlogs: "tickets"
+  };
 
-    data.ticketSystem.logs.valoraciones = channel.id;
+  if (logMap[command]) {
+    const channel = interaction.options.getChannel("canal");
+    data.ticketSystem.logs[logMap[command]] = channel.id;
     saveData();
 
     return interaction.reply({
-      embeds: [
-        successEmbed(
-          `Canal de valoraciones configurado en ${channel}.`
-        )
-      ]
-    });
-  }
-
-  if (command === "transaccion") {
-    const channel =
-      interaction.options.getChannel("canal");
-
-    data.ticketSystem.logs.transacciones = channel.id;
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        successEmbed(
-          `Canal de transacciones configurado en ${channel}.`
-        )
-      ]
-    });
-  }
-
-  if (command === "ticketlogs") {
-    const channel =
-      interaction.options.getChannel("canal");
-
-    data.ticketSystem.logs.tickets = channel.id;
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        successEmbed(
-          `Logs de tickets configurados en ${channel}.`
-        )
-      ]
+      embeds: [successEmbed(`${command} → ${channel}`)]
     });
   }
 }
-
-// =====================================================
-// AUTOCOMPLETE
-// =====================================================
 
 async function handleAutocomplete(interaction) {
   if (
     !interaction.isAutocomplete() ||
     interaction.commandName !== "ticketpanel"
-  ) {
-    return;
-  }
+  ) return;
 
-  ensureTicketData();
+  const focused = interaction.options.getFocused().toLowerCase();
 
-  const focused =
-    interaction.options.getFocused().toLowerCase();
-
-  const panels =
-    Object.values(data.ticketSystem.panels)
-      .filter(
-        panel =>
-          panel.name.toLowerCase().includes(focused) ||
-          panel.key.includes(focused)
-      )
-      .slice(0, 25);
+  const panels = Object.values(data.ticketSystem.panels)
+    .filter(
+      p =>
+        p.name.toLowerCase().includes(focused) ||
+        p.key.includes(focused)
+    )
+    .slice(0, 25);
 
   await interaction.respond(
-    panels.map(panel => ({
-      name: panel.name.slice(0, 100),
-      value: panel.key
+    panels.map(p => ({
+      name: p.name.slice(0, 100),
+      value: p.key
     }))
   ).catch(() => {});
 }
-
-// =====================================================
-// SELECT MENUS
-// =====================================================
 
 async function handleSelect(interaction) {
   if (!interaction.isStringSelectMenu()) return;
@@ -1302,122 +1065,67 @@ async function handleSelect(interaction) {
   if (interaction.customId === "lrm_admin_menu") {
     if (!canManageSystem(interaction.member)) {
       return interaction.reply({
-        embeds: [
-          errorEmbed("No tienes permisos.")
-        ],
+        embeds: [errorEmbed("No tienes permisos.")],
         ephemeral: true
       });
     }
 
-    const selected = interaction.values[0];
-
     const sections = {
-      administracion:
-        `### ${E.admin} Administración\n` +
-        "`.admin / /admin`\n" +
-        "`.addmoney / /addmoney`\n" +
-        "`.removemoney / /removemoney`\n" +
-        "`.say`\n" +
-        "`.embed`",
+      moderacion:
+        "**Moderación**\n`/ban` `/kick` `/mute` `/unmute` `/unban`",
 
       tickets:
-        `### Tickets\n` +
-        "`.panel / /panel`\n" +
-        "`.ticketpanel / /ticketpanel`\n" +
-        "`.staff / /staff`\n" +
-        "`.valoraciones / /valoraciones`\n" +
-        "`.transaccion / /transaccion`\n" +
-        "`.ticketlogs / /ticketlogs`",
+        "**Tickets**\n`/panel` `/ticketpanel` `/staff` `/valoraciones` `/ticketlogs`",
+
+      sistemas:
+        "**Sistemas**\n`/bienvenidaset` `/inviteset` `/niveleset`\n`/alianzaset` `/affysset` `/surgeset`",
 
       economia:
-        `### ${E.money} Economía\n` +
-        "`.addmoney @usuario cantidad`\n" +
-        "`.removemoney @usuario cantidad`",
+        "**Economía administrativa**\n`/addmoney` `/removemoney`",
 
-      mensajes:
-        `### Mensajes\n` +
-        "`.say mensaje`\n" +
-        "`.embed mensaje`",
-
-      tienda:
-        `### Tienda\n` +
-        "`.shopadd`\n" +
-        "`.shopremove`\n" +
-        "`.shopedit`\n" +
-        "`.shoplist`\n" +
-        "`.shopclear`",
-
-      logs:
-        `### Logs\n` +
-        "`.setlog`\n" +
-        "`.logs`\n" +
-        "`.valoraciones / /valoraciones`\n" +
-        "`.transaccion / /transaccion`\n" +
-        "`.ticketlogs / /ticketlogs`"
+      seguridad:
+        "**Seguridad**\n`/honeypotset` `/honeyedit`"
     };
 
     return interaction.update({
       embeds: [
         glassEmbed(COLORS.admin)
-          .setTitle(`${E.admin}  LRM Studio Admin`)
-          .setDescription(
-            sections[selected] ||
-            "Sección no encontrada."
-          )
+          .setTitle("⚙ LRM Studio Admin")
+          .setDescription(sections[interaction.values[0]] || "Sin información.")
       ],
       components: [adminMenu()]
     });
   }
 
   if (interaction.customId.startsWith("ticket_create:")) {
-    ensureTicketData();
-
-    const key =
-      interaction.customId.split(":")[1];
-
-    const panel =
-      data.ticketSystem.panels[key];
+    const key = interaction.customId.split(":")[1];
+    const panel = data.ticketSystem.panels[key];
 
     if (!panel) {
       return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "Este panel ya no existe."
-          )
-        ],
+        embeds: [errorEmbed("Este panel ya no existe.")],
         ephemeral: true
       });
     }
 
     if (!panel.questions.length) {
-      return createTicket(
-        interaction,
-        panel,
-        []
-      );
+      return createTicket(interaction, panel, []);
     }
 
-    const modal =
-      new ModalBuilder()
-        .setCustomId(`ticket_modal:${key}`)
-        .setTitle(
-          `Ticket • ${panel.name}`.slice(0, 45)
-        );
+    const modal = new ModalBuilder()
+      .setCustomId(`ticket_modal:${key}`)
+      .setTitle(`Ticket • ${panel.name}`.slice(0, 45));
 
     panel.questions.forEach((question, index) => {
-      const input =
-        new TextInputBuilder()
-          .setCustomId(`answer_${index}`)
-          .setLabel(
-            question.slice(0, 45)
-          )
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(true)
-          .setMaxLength(1000);
-
       modal.addComponents(
-        new ActionRowBuilder()
-          .addComponents(input)
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId(`answer_${index}`)
+            .setLabel(question.slice(0, 45))
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(true)
+            .setMaxLength(1000)
+        )
       );
     });
 
@@ -1425,216 +1133,110 @@ async function handleSelect(interaction) {
   }
 }
 
-// =====================================================
-// MODAL
-// =====================================================
-
 async function handleModal(interaction) {
-  if (!interaction.isModalSubmit()) return;
+  if (
+    !interaction.isModalSubmit() ||
+    !interaction.customId.startsWith("ticket_modal:")
+  ) return;
 
-  if (!interaction.customId.startsWith("ticket_modal:")) {
-    return;
-  }
-
-  const key =
-    interaction.customId.split(":")[1];
-
-  const panel =
-    data.ticketSystem.panels[key];
+  const key = interaction.customId.split(":")[1];
+  const panel = data.ticketSystem.panels[key];
 
   if (!panel) {
     return interaction.reply({
-      embeds: [
-        errorEmbed("Este panel ya no existe.")
-      ],
+      embeds: [errorEmbed("Este panel ya no existe.")],
       ephemeral: true
     });
   }
 
-  const answers =
-    panel.questions.map((question, index) => ({
-      question,
-      answer:
-        interaction.fields.getTextInputValue(
-          `answer_${index}`
-        )
-    }));
+  const answers = panel.questions.map((question, index) => ({
+    question,
+    answer: interaction.fields.getTextInputValue(`answer_${index}`)
+  }));
 
-  return createTicket(
-    interaction,
-    panel,
-    answers
-  );
+  return createTicket(interaction, panel, answers);
 }
-
-// =====================================================
-// BOTONES
-// =====================================================
 
 async function handleButtons(interaction) {
   if (!interaction.isButton()) return;
 
-  // CLAIM
   if (interaction.customId.startsWith("ticket_claim:")) {
-    const channelId =
-      interaction.customId.split(":")[1];
-
-    const ticket =
-      data.ticketSystem.openTickets[channelId];
+    const id = interaction.customId.split(":")[1];
+    const ticket = data.ticketSystem.openTickets[id];
 
     if (!ticket) {
       return interaction.reply({
-        embeds: [
-          errorEmbed("Este ticket ya no existe.")
-        ],
+        embeds: [errorEmbed("Este ticket ya no existe.")],
         ephemeral: true
       });
     }
 
-    if (
-      !hasStaffPermission(
-        interaction.member,
-        "reclamar_ticket"
-      )
-    ) {
+    if (!hasStaffPermission(interaction.member, "reclamar_ticket")) {
       return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "No tienes permiso para reclamar tickets."
-          )
-        ],
+        embeds: [errorEmbed("No puedes reclamar tickets.")],
         ephemeral: true
       });
     }
 
     if (ticket.claimedBy) {
       return interaction.reply({
-        embeds: [
-          errorEmbed(
-            `Este ticket ya fue reclamado por <@${ticket.claimedBy}>.`
-          )
-        ],
+        embeds: [errorEmbed(`Ya fue reclamado por <@${ticket.claimedBy}>.`)],
         ephemeral: true
       });
     }
 
-    ticket.claimedBy =
-      interaction.user.id;
-
+    ticket.claimedBy = interaction.user.id;
     saveData();
 
-    await ticketLog(
-      interaction.guild,
-      `${E.admin}  Ticket reclamado`,
-      `${interaction.user} reclamó ${interaction.channel}.`,
-      COLORS.info
-    );
-
     return interaction.reply({
-      embeds: [
-        successEmbed(
-          `Ticket reclamado por ${interaction.user}.`
-        )
-      ]
+      embeds: [successEmbed(`Ticket reclamado por ${interaction.user}.`)]
     });
   }
 
-  // CLOSE
   if (interaction.customId.startsWith("ticket_close:")) {
-    const channelId =
-      interaction.customId.split(":")[1];
-
-    const ticket =
-      data.ticketSystem.openTickets[channelId];
+    const id = interaction.customId.split(":")[1];
+    const ticket = data.ticketSystem.openTickets[id];
 
     if (!ticket) {
       return interaction.reply({
-        embeds: [
-          errorEmbed("Este ticket ya no existe.")
-        ],
+        embeds: [errorEmbed("Este ticket ya no existe.")],
         ephemeral: true
       });
     }
-
-    const isOwner =
-      interaction.user.id === ticket.userId;
 
     if (
-      !isOwner &&
-      !hasStaffPermission(
-        interaction.member,
-        "cerrar_ticket"
-      )
+      interaction.user.id !== ticket.userId &&
+      !hasStaffPermission(interaction.member, "cerrar_ticket")
     ) {
       return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "No tienes permiso para cerrar este ticket."
-          )
-        ],
+        embeds: [errorEmbed("No puedes cerrar este ticket.")],
         ephemeral: true
       });
     }
 
-    return requestTicketClose(
-      interaction,
-      ticket
-    );
+    return requestTicketClose(interaction, ticket);
   }
 
-  // RATING
   if (interaction.customId.startsWith("ticket_rating:")) {
-    const parts =
-      interaction.customId.split(":");
-
-    const rating =
-      Number(parts[1]);
-
-    const channelId =
-      parts[2];
-
-    const ticket =
-      data.ticketSystem.openTickets[channelId];
+    const [, ratingRaw, channelId] = interaction.customId.split(":");
+    const rating = Number(ratingRaw);
+    const ticket = data.ticketSystem.openTickets[channelId];
 
     if (!ticket) {
       return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "Este ticket ya fue cerrado."
-          )
-        ],
+        embeds: [errorEmbed("Este ticket ya fue cerrado.")],
         ephemeral: true
       });
     }
 
-    if (
-      interaction.user.id !==
-      ticket.userId
-    ) {
+    if (interaction.user.id !== ticket.userId) {
       return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "Solo el creador del ticket puede valorarlo."
-          )
-        ],
+        embeds: [errorEmbed("Solo el creador puede valorar.")],
         ephemeral: true
       });
     }
 
-    await ratingLog(
-      interaction.guild,
-      interaction.user,
-      rating,
-      ticket
-    );
-
-    await ticketLog(
-      interaction.guild,
-      `${E.loss}  Ticket cerrado`,
-      `${interaction.user} valoró el ticket con **${rating}/5**.\n\n` +
-      `Canal: **${interaction.channel.name}**`,
-      COLORS.warning
-    );
+    await ratingLog(interaction.guild, interaction.user, rating, ticket);
 
     delete data.ticketSystem.openTickets[channelId];
     saveData();
@@ -1642,50 +1244,82 @@ async function handleButtons(interaction) {
     await interaction.update({
       embeds: [
         glassEmbed(COLORS.warning)
-          .setTitle(`${E.success}  Valoración recibida`)
+          .setTitle("✓ Valoración recibida")
           .setDescription(
-            `Gracias por valorar la atención con **${rating}/5**.\n\n` +
-            `${E.time} Este ticket se cerrará en **5 segundos**.`
+            `Gracias por valorar con **${rating}/5**.\n\n` +
+            "Este ticket se cerrará en **5 segundos**."
           )
       ],
       components: []
     });
 
-    setTimeout(async () => {
-      await interaction.channel
-        .delete("Ticket cerrado")
-        .catch(() => {});
+    setTimeout(() => {
+      interaction.channel.delete("Ticket cerrado").catch(() => {});
     }, 5000);
-
-    return;
   }
 }
 
-// =====================================================
-// PREFIX ADMIN
-// =====================================================
+async function handleHoneyPotMessage(message) {
+  if (
+    message.author.bot ||
+    !message.guild ||
+    !data.honeypot?.channelId ||
+    message.channel.id !== data.honeypot.channelId
+  ) return false;
+
+  // No castiga administradores.
+  if (message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
+    return false;
+  }
+
+  if (!message.member?.bannable) {
+    return false;
+  }
+
+  await message.member.ban({
+    reason: "LRM Studio HoneyPot"
+  }).catch(() => null);
+
+  data.honeypot.bans++;
+  saveData();
+
+  if (data.honeypot.messageId) {
+    const panel = await message.channel.messages
+      .fetch(data.honeypot.messageId)
+      .catch(() => null);
+
+    if (panel) {
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("honeypot_counter")
+          .setLabel(`Ban: ${data.honeypot.bans}`)
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(true)
+      );
+
+      await panel.edit({ components: [row] }).catch(() => {});
+    }
+  }
+
+  return true;
+}
 
 async function handlePrefix(message) {
   if (
     message.author.bot ||
     !message.guild ||
     !message.content.startsWith(PREFIX)
-  ) {
-    return;
-  }
+  ) return;
 
-  const args =
-    message.content
-      .slice(PREFIX.length)
-      .trim()
-      .split(/\s+/);
+  const args = message.content
+    .slice(PREFIX.length)
+    .trim()
+    .split(/\s+/);
 
-  const command =
-    args.shift()?.toLowerCase();
-
+  const command = args.shift()?.toLowerCase();
   if (!command) return;
 
-  const commands = [
+  const adminOnly = [
     "admin",
     "addmoney",
     "removemoney",
@@ -1693,730 +1327,225 @@ async function handlePrefix(message) {
     "embed",
     "setlog",
     "logs",
-    "shopadd",
-    "shopremove",
-    "shopedit",
-    "shoplist",
-    "shopclear",
     "ticketpanel",
     "staff",
     "valoraciones",
     "transaccion",
-    "ticketlogs"
+    "ticketlogs",
+    "bienvenidaset",
+    "inviteset",
+    "niveleset",
+    "alianzaset",
+    "affysset",
+    "surgeset",
+    "honeypotset",
+    "honeyedit"
   ];
 
-  if (!commands.includes(command)) {
-    return;
-  }
+  if (!adminOnly.includes(command)) return;
 
   if (!canManageSystem(message.member)) {
     return message.reply({
-      embeds: [
-        errorEmbed(
-          "No tienes permisos administrativos."
-        )
-      ]
+      embeds: [errorEmbed("No tienes permisos administrativos.")]
     });
   }
 
-  // ADMIN
-  if (command === "admin") {
-    return showAdmin(message);
-  }
+  if (command === "admin") return showAdmin(message);
 
-  // ADDMONEY
-  if (command === "addmoney") {
-    const target =
-      message.mentions.users.first();
+  if (command === "addmoney" || command === "removemoney") {
+    const target = message.mentions.users.first();
+    const amount = Number(args[1]);
 
-    const amount =
-      Number(args[1]);
-
-    if (
-      !target ||
-      !Number.isInteger(amount) ||
-      amount <= 0
-    ) {
+    if (!target || !Number.isInteger(amount) || amount <= 0) {
       return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.addmoney @usuario cantidad`"
-          )
-        ]
+        embeds: [errorEmbed(`Uso: \`.${command} @usuario cantidad\``)]
       });
     }
 
-    const account =
-      getUser(target.id);
+    const account = getUser(target.id);
 
-    account.wallet += amount;
+    if (command === "addmoney") {
+      account.wallet += amount;
+    } else {
+      account.wallet -= Math.min(Math.max(account.wallet, 0), amount);
+    }
+
     saveData();
-
-    await logAction(
-      message.guild,
-      "economia",
-      {
-        title: `${E.gain} Dinero añadido`,
-        description:
-          `${message.author} añadió **$${amount.toLocaleString("es-ES")}** a ${target}.\n\n` +
-          `Nuevo saldo: **$${account.wallet.toLocaleString("es-ES")}**`,
-        color: COLORS.success
-      }
-    );
 
     return message.reply({
       embeds: [
         successEmbed(
-          `Añadiste **$${amount.toLocaleString("es-ES")}** a ${target}.\n\n` +
-          `Wallet: **$${account.wallet.toLocaleString("es-ES")}**`
+          `${target}\nWallet: **$${account.wallet.toLocaleString("es-ES")}**`
         )
       ]
     });
   }
 
-  // REMOVEMONEY
-  if (command === "removemoney") {
-    const target =
-      message.mentions.users.first();
-
-    const amount =
-      Number(args[1]);
-
-    if (
-      !target ||
-      !Number.isInteger(amount) ||
-      amount <= 0
-    ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.removemoney @usuario cantidad`"
-          )
-        ]
-      });
-    }
-
-    const account =
-      getUser(target.id);
-
-    const removed =
-      Math.min(account.wallet, amount);
-
-    account.wallet -= removed;
-    saveData();
-
-    await logAction(
-      message.guild,
-      "economia",
-      {
-        title: `${E.loss} Dinero retirado`,
-        description:
-          `${message.author} quitó **$${removed.toLocaleString("es-ES")}** a ${target}.\n\n` +
-          `Nuevo saldo: **$${account.wallet.toLocaleString("es-ES")}**`,
-        color: COLORS.warning
-      }
-    );
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `Quitaste **$${removed.toLocaleString("es-ES")}** a ${target}.\n\n` +
-          `Wallet: **$${account.wallet.toLocaleString("es-ES")}**`
-        )
-      ]
-    });
-  }
-
-  // SAY
   if (command === "say") {
     const text = args.join(" ");
-
-    if (!text) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.say mensaje`"
-          )
-        ]
-      });
-    }
+    if (!text) return;
 
     await message.delete().catch(() => {});
-
     return message.channel.send(text);
   }
 
-  // EMBED
   if (command === "embed") {
     const text = args.join(" ");
-
-    if (!text) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.embed mensaje`"
-          )
-        ]
-      });
-    }
+    if (!text) return;
 
     await message.delete().catch(() => {});
 
     return message.channel.send({
-      embeds: [
-        glassEmbed(COLORS.primary)
-          .setDescription(text)
-      ]
+      embeds: [glassEmbed().setDescription(text)]
     });
   }
 
-  // SETLOG
-  if (command === "setlog") {
-    const type =
-      args[0]?.toLowerCase();
+  const systemMap = {
+    bienvenidaset: ["bienvenida", "Bienvenidas"],
+    inviteset: ["invites", "Invites"],
+    niveleset: ["niveles", "Niveles"],
+    alianzaset: ["alianzas", "Alianzas"],
+    affysset: ["affys", "Affys"],
+    surgeset: ["sugerencias", "Sugerencias"]
+  };
 
-    const channel =
-      message.mentions.channels.first();
+  if (systemMap[command]) {
+    const channel = message.mentions.channels.first();
 
-    const valid = [
-      "general",
-      "economia",
-      "tienda",
-      "niveles",
-      "admin"
-    ];
-
-    if (
-      !valid.includes(type) ||
-      !channel
-    ) {
+    if (!channel) {
       return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.setlog general/economia/tienda/niveles/admin #canal`"
-          )
-        ]
+        embeds: [errorEmbed(`Uso: \`.${command} #canal\``)]
       });
     }
 
-    data.settings ??= {};
-    data.settings.logs ??= {};
+    const [key, title] = systemMap[command];
 
-    data.settings.logs[type] =
-      channel.id;
-
+    data.settings.systemChannels[key] = channel.id;
     saveData();
 
     return message.reply({
-      embeds: [
-        successEmbed(
-          `Log **${type}** configurado en ${channel}.`
-        )
-      ]
+      embeds: [successEmbed(`${title} → ${channel}`)]
     });
   }
 
-  // LOGS
+  if (command === "honeypotset") {
+    const channel = message.mentions.channels.first();
+
+    if (!channel) {
+      return message.reply({
+        embeds: [errorEmbed("Uso: `.honeypotset #canal`")]
+      });
+    }
+
+    await installHoneyPot(message.guild, channel);
+
+    return message.reply({
+      embeds: [successEmbed(`HoneyPot instalado en ${channel}.`)]
+    });
+  }
+
+  if (command === "honeyedit") {
+    const text = args.join(" ");
+
+    if (!text) {
+      return message.reply({
+        embeds: [errorEmbed("Uso: `.honeyedit mensaje`")]
+      });
+    }
+
+    data.honeypot.message = text;
+    saveData();
+
+    return message.reply({
+      embeds: [successEmbed("HoneyPot actualizado.")]
+    });
+  }
+
+  if (command === "setlog") {
+    const type = args[0]?.toLowerCase();
+    const channel = message.mentions.channels.first();
+
+    if (
+      !["general", "economia", "tienda", "niveles", "admin"].includes(type) ||
+      !channel
+    ) {
+      return message.reply({
+        embeds: [errorEmbed("Uso: `.setlog tipo #canal`")]
+      });
+    }
+
+    data.settings.logs[type] = channel.id;
+    saveData();
+
+    return message.reply({
+      embeds: [successEmbed(`Log **${type}** → ${channel}`)]
+    });
+  }
+
   if (command === "logs") {
-    const logs =
-      data.settings?.logs || {};
+    const logs = data.settings.logs;
 
     return message.reply({
       embeds: [
         glassEmbed(COLORS.admin)
-          .setTitle(`${E.logs}  Logs`)
+          .setTitle("⌁ Logs")
           .setDescription(
-            `General: ${logs.general ? `<#${logs.general}>` : "No configurado"}\n` +
-            `Economía: ${logs.economia ? `<#${logs.economia}>` : "No configurado"}\n` +
-            `Tienda: ${logs.tienda ? `<#${logs.tienda}>` : "No configurado"}\n` +
-            `Niveles: ${logs.niveles ? `<#${logs.niveles}>` : "No configurado"}\n` +
-            `Admin: ${logs.admin ? `<#${logs.admin}>` : "No configurado"}\n\n` +
-            `Valoraciones: ${
-              data.ticketSystem.logs.valoraciones
-                ? `<#${data.ticketSystem.logs.valoraciones}>`
-                : "No configurado"
-            }\n` +
-            `Transacciones: ${
-              data.ticketSystem.logs.transacciones
-                ? `<#${data.ticketSystem.logs.transacciones}>`
-                : "No configurado"
-            }\n` +
-            `Tickets: ${
-              data.ticketSystem.logs.tickets
-                ? `<#${data.ticketSystem.logs.tickets}>`
-                : "No configurado"
-            }`
+            `General: ${logs.general ? `<#${logs.general}>` : "No"}\n` +
+            `Economía: ${logs.economia ? `<#${logs.economia}>` : "No"}\n` +
+            `Tienda: ${logs.tienda ? `<#${logs.tienda}>` : "No"}\n` +
+            `Niveles: ${logs.niveles ? `<#${logs.niveles}>` : "No"}\n` +
+            `Admin: ${logs.admin ? `<#${logs.admin}>` : "No"}`
           )
       ]
     });
   }
 
-  // SHOP ADD
-  if (command === "shopadd") {
-    const name = args[0];
-    const price = Number(args[1]);
+  if (["valoraciones", "transaccion", "ticketlogs"].includes(command)) {
+    const channel = message.mentions.channels.first();
 
-    if (
-      !name ||
-      !Number.isInteger(price) ||
-      price <= 0
-    ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.shopadd nombre precio`"
-          )
-        ]
-      });
-    }
+    if (!channel) return;
 
-    if (
-      data.shop.some(
-        item =>
-          item.name.toLowerCase() ===
-          name.toLowerCase()
-      )
-    ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Ya existe un producto con ese nombre."
-          )
-        ]
-      });
-    }
+    const key =
+      command === "valoraciones"
+        ? "valoraciones"
+        : command === "transaccion"
+          ? "transacciones"
+          : "tickets";
 
-    data.shop.push({
-      name,
-      price,
-      type: "item"
-    });
-
+    data.ticketSystem.logs[key] = channel.id;
     saveData();
 
     return message.reply({
-      embeds: [
-        successEmbed(
-          `Producto **${name}** añadido por **$${price.toLocaleString("es-ES")}**.`
-        )
-      ]
-    });
-  }
-
-  // SHOP REMOVE
-  if (command === "shopremove") {
-    const name =
-      args.join(" ");
-
-    const index =
-      data.shop.findIndex(
-        item =>
-          item.name.toLowerCase() ===
-          name.toLowerCase()
-      );
-
-    if (index === -1) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "No encontré ese producto."
-          )
-        ]
-      });
-    }
-
-    const [removed] =
-      data.shop.splice(index, 1);
-
-    saveData();
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `Producto **${removed.name}** eliminado.`
-        )
-      ]
-    });
-  }
-
-  // SHOP EDIT
-  if (command === "shopedit") {
-    const name = args[0];
-    const price = Number(args[1]);
-
-    if (
-      !name ||
-      !Number.isInteger(price) ||
-      price <= 0
-    ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.shopedit nombre nuevoPrecio`"
-          )
-        ]
-      });
-    }
-
-    const product =
-      data.shop.find(
-        item =>
-          item.name.toLowerCase() ===
-          name.toLowerCase()
-      );
-
-    if (!product) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "No encontré ese producto."
-          )
-        ]
-      });
-    }
-
-    product.price = price;
-    saveData();
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `**${product.name}** ahora cuesta **$${price.toLocaleString("es-ES")}**.`
-        )
-      ]
-    });
-  }
-
-  // SHOP LIST
-  if (command === "shoplist") {
-    return message.reply({
-      embeds: [
-        glassEmbed(COLORS.economy)
-          .setTitle(`${E.shop}  Productos`)
-          .setDescription(
-            data.shop.length
-              ? data.shop
-                  .map(
-                    (item, index) =>
-                      `**${index + 1}. ${item.name}** • $${item.price.toLocaleString("es-ES")}`
-                  )
-                  .join("\n")
-              : "La tienda está vacía."
-          )
-      ]
-    });
-  }
-
-  // SHOP CLEAR
-  if (command === "shopclear") {
-    data.shop.length = 0;
-    saveData();
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          "Todos los productos fueron eliminados."
-        )
-      ]
-    });
-  }
-
-  // TICKET PANEL PREFIX
-  if (command === "ticketpanel") {
-    const channel =
-      message.mentions.channels.first();
-
-    if (!channel) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.ticketpanel #canal nombre-panel`"
-          )
-        ]
-      });
-    }
-
-    const panelName =
-      args
-        .slice(1)
-        .join(" ")
-        .trim();
-
-    const panel =
-      data.ticketSystem.panels[panelName] ||
-      Object.values(
-        data.ticketSystem.panels
-      ).find(
-        p =>
-          p.name.toLowerCase() ===
-          panelName.toLowerCase()
-      );
-
-    if (!panel) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "No encontré ese panel."
-          )
-        ]
-      });
-    }
-
-    const menu =
-      new StringSelectMenuBuilder()
-        .setCustomId(
-          `ticket_create:${panel.key}`
-        )
-        .setPlaceholder(
-          "Selecciona para crear un ticket"
-        )
-        .addOptions({
-          label: panel.name.slice(0, 100),
-          value: "create",
-          description: "Abrir un nuevo ticket",
-          emoji: parseMenuEmoji(panel.emoji)
-        });
-
-    await channel.send({
-      embeds: [
-        glassEmbed(COLORS.primary)
-          .setTitle(
-            `${panel.emoji || "🎫"}  ${panel.name}`
-          )
-          .setDescription(
-            panel.panelMessage
-          )
-      ],
-      components: [
-        new ActionRowBuilder()
-          .addComponents(menu)
-      ]
-    });
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `Panel enviado en ${channel}.`
-        )
-      ]
-    });
-  }
-
-  // VALORACIONES PREFIX
-  if (command === "valoraciones") {
-    const channel =
-      message.mentions.channels.first();
-
-    if (!channel) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.valoraciones #canal`"
-          )
-        ]
-      });
-    }
-
-    data.ticketSystem.logs.valoraciones =
-      channel.id;
-
-    saveData();
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `Valoraciones → ${channel}`
-        )
-      ]
-    });
-  }
-
-  // TRANSACCION PREFIX
-  if (command === "transaccion") {
-    const channel =
-      message.mentions.channels.first();
-
-    if (!channel) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.transaccion #canal`"
-          )
-        ]
-      });
-    }
-
-    data.ticketSystem.logs.transacciones =
-      channel.id;
-
-    saveData();
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `Transacciones → ${channel}`
-        )
-      ]
-    });
-  }
-
-  // TICKETLOGS PREFIX
-  if (command === "ticketlogs") {
-    const channel =
-      message.mentions.channels.first();
-
-    if (!channel) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.ticketlogs #canal`"
-          )
-        ]
-      });
-    }
-
-    data.ticketSystem.logs.tickets =
-      channel.id;
-
-    saveData();
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          `Logs de tickets → ${channel}`
-        )
-      ]
-    });
-  }
-
-  // STAFF PREFIX
-  if (command === "staff") {
-    const role =
-      message.mentions.roles.first();
-
-    const permission =
-      args[1]?.toLowerCase();
-
-    const action =
-      args[2]?.toLowerCase() || "add";
-
-    const validPermissions = [
-      "ver_ticket",
-      "cerrar_ticket",
-      "reclamar_ticket",
-      "gestionar_tickets",
-      "ban",
-      "mute",
-      "kick",
-      "admin"
-    ];
-
-    if (
-      !role ||
-      !validPermissions.includes(permission) ||
-      !["add", "remove"].includes(action)
-    ) {
-      return message.reply({
-        embeds: [
-          errorEmbed(
-            "Uso: `.staff @rol permiso add/remove`\n\n" +
-            `Permisos: \`${validPermissions.join("`, `")}\``
-          )
-        ]
-      });
-    }
-
-    data.ticketSystem.staffRoles[role.id] ??= [];
-
-    if (action === "add") {
-      if (
-        !data.ticketSystem.staffRoles[role.id]
-          .includes(permission)
-      ) {
-        data.ticketSystem.staffRoles[role.id]
-          .push(permission);
-      }
-    } else {
-      data.ticketSystem.staffRoles[role.id] =
-        data.ticketSystem.staffRoles[role.id]
-          .filter(
-            p => p !== permission
-          );
-    }
-
-    saveData();
-
-    await syncRoleTicketPermissions(
-      message.guild,
-      role.id
-    );
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          action === "add"
-            ? `Permiso **${permission}** añadido a ${role}.`
-            : `Permiso **${permission}** eliminado de ${role}.`
-        )
-      ]
+      embeds: [successEmbed(`${command} → ${channel}`)]
     });
   }
 }
 
-// =====================================================
-// SETUP
-// =====================================================
-
 function setupAdmin(discordClient, options) {
   client = discordClient;
-
   data = options.data;
   saveData = options.saveData;
   sendLog = options.sendLog;
   logAction = options.logAction;
   getUser = options.getUser;
+  PREFIX = options.prefix || ".";
+  COLORS = options.colors;
+  E = options.symbols;
 
-  PREFIX =
-    options.prefix || ".";
-
-  COLORS =
-    options.colors;
-
-  E =
-    options.symbols;
-
-  ensureTicketData();
+  ensureData();
 
   if (registered) return;
-
   registered = true;
 
   client.on("interactionCreate", async interaction => {
     try {
-      if (interaction.isAutocomplete()) {
-        return handleAutocomplete(interaction);
-      }
-
-      if (interaction.isChatInputCommand()) {
-        return handleSlash(interaction);
-      }
-
-      if (interaction.isStringSelectMenu()) {
-        return handleSelect(interaction);
-      }
-
-      if (interaction.isModalSubmit()) {
-        return handleModal(interaction);
-      }
-
-      if (interaction.isButton()) {
-        return handleButtons(interaction);
-      }
-    } catch (err) {
-      console.error(
-        "Admin interaction error:",
-        err
-      );
+      if (interaction.isAutocomplete()) return handleAutocomplete(interaction);
+      if (interaction.isChatInputCommand()) return handleSlash(interaction);
+      if (interaction.isStringSelectMenu()) return handleSelect(interaction);
+      if (interaction.isModalSubmit()) return handleModal(interaction);
+      if (interaction.isButton()) return handleButtons(interaction);
+    } catch (error) {
+      console.error("Admin interaction error:", error);
 
       if (
         interaction.isRepliable() &&
@@ -2424,11 +1553,7 @@ function setupAdmin(discordClient, options) {
         !interaction.deferred
       ) {
         await interaction.reply({
-          embeds: [
-            errorEmbed(
-              "Ocurrió un error ejecutando esta acción."
-            )
-          ],
+          embeds: [errorEmbed("Ocurrió un error.")],
           ephemeral: true
         }).catch(() => {});
       }
@@ -2437,12 +1562,12 @@ function setupAdmin(discordClient, options) {
 
   client.on("messageCreate", async message => {
     try {
+      const trapped = await handleHoneyPotMessage(message);
+      if (trapped) return;
+
       await handlePrefix(message);
-    } catch (err) {
-      console.error(
-        "Admin prefix error:",
-        err
-      );
+    } catch (error) {
+      console.error("Admin message error:", error);
     }
   });
 }
