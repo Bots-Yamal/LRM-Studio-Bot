@@ -5,6 +5,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
   SlashCommandBuilder,
   REST,
   Routes
@@ -13,15 +14,33 @@ const {
 const fs = require("fs");
 const { setupAdmin, adminCommands } = require("./admin");
 
+// ======================================================
+// CONFIG
+// ======================================================
+
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
 const PREFIX = ".";
 const DATA_FILE = "./data.json";
 
-// =====================================================
+// ======================================================
+// CLIENT
+// ======================================================
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildInvites
+  ]
+});
+
+// ======================================================
 // COLORES
-// =====================================================
+// ======================================================
 
 const COLORS = {
   primary: "#7C8CFF",
@@ -35,9 +54,9 @@ const COLORS = {
   royale: "#F5B7FF"
 };
 
-// =====================================================
+// ======================================================
 // SIMBOLOS
-// =====================================================
+// ======================================================
 
 const E = {
   money: "$",
@@ -61,23 +80,9 @@ const E = {
   royale: "✧"
 };
 
-// =====================================================
-// CLIENT
-// =====================================================
-
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildInvites
-  ]
-});
-
-// =====================================================
-// PLANTILLAS
-// =====================================================
+// ======================================================
+// TEMPLATES
+// ======================================================
 
 const WELCOME_TEMPLATE = `👋・¡Bienvenido/a a LRM Studio!
 
@@ -153,182 +158,74 @@ Cualquier interacción será detectada automáticamente y podrá activar las med
 
 🛡️ LRM Studio Security`;
 
-// =====================================================
+// ======================================================
 // DATA
-// =====================================================
+// ======================================================
 
 const DEFAULT_DATA = {
   users: {},
-  shop: [],
-
+  shop: {},
   settings: {
-    logs: {
-      general: null,
-      economia: null,
-      tienda: null,
-      niveles: null,
-      admin: null
-    },
-
-    systemChannels: {
-      bienvenida: null,
-      invites: null,
-      niveles: null,
-      alianzas: null,
-      affys: null,
-      sugerencias: null,
-      honeypot: null
-    }
+    logs: {},
+    systemChannels: {}
   },
-
-  ticketSystem: {
-    panels: {},
-    staffRoles: {},
-    openTickets: {},
-
-    logs: {
-      valoraciones: null,
-      transacciones: null,
-      tickets: null
-    }
-  },
-
-  inviteSystem: {
-    users: {},
-    members: {}
-  },
-
+  ticketSystem: {},
+  inviteSystem: {},
   partners: {},
-
-  moderation: {
-    warnings: {}
-  },
-
-  honeypot: {
-    message: HONEYPOT_TEMPLATE,
-    channelId: null,
-    messageId: null,
-    bans: 0
-  }
+  moderation: {},
+  honeypot: {}
 };
-
-function freshData() {
-  return JSON.parse(
-    JSON.stringify(DEFAULT_DATA)
-  );
-}
 
 function loadData() {
   if (!fs.existsSync(DATA_FILE)) {
-    const fresh = freshData();
-
     fs.writeFileSync(
       DATA_FILE,
-      JSON.stringify(fresh, null, 2)
+      JSON.stringify(DEFAULT_DATA, null, 2)
     );
 
-    return fresh;
+    return JSON.parse(JSON.stringify(DEFAULT_DATA));
   }
 
   try {
-    const parsed = JSON.parse(
-      fs.readFileSync(
-        DATA_FILE,
-        "utf8"
-      )
+    const data = JSON.parse(
+      fs.readFileSync(DATA_FILE, "utf8")
     );
 
-    parsed.users ??= {};
-    parsed.shop ??= [];
+    data.users ??= {};
+    data.shop ??= {};
+    data.settings ??= {};
+    data.settings.logs ??= {};
+    data.settings.systemChannels ??= {};
+    data.ticketSystem ??= {};
+    data.inviteSystem ??= {};
+    data.partners ??= {};
+    data.moderation ??= {};
+    data.honeypot ??= {};
 
-    if (Array.isArray(parsed.users)) {
-      parsed.users = {};
-    }
-
-    if (!Array.isArray(parsed.shop)) {
-      parsed.shop = [];
-    }
-
-    parsed.settings ??= {};
-    parsed.settings.logs ??= {};
-
-    for (const log of [
-      "general",
-      "economia",
-      "tienda",
-      "niveles",
-      "admin"
-    ]) {
-      parsed.settings.logs[log] ??= null;
-    }
-
-    parsed.settings.systemChannels ??= {};
-
-    for (const key of [
-      "bienvenida",
-      "invites",
-      "niveles",
-      "alianzas",
-      "affys",
-      "sugerencias",
-      "honeypot"
-    ]) {
-      parsed.settings.systemChannels[key] ??= null;
-    }
-
-    parsed.ticketSystem ??= {};
-    parsed.ticketSystem.panels ??= {};
-    parsed.ticketSystem.staffRoles ??= {};
-    parsed.ticketSystem.openTickets ??= {};
-    parsed.ticketSystem.logs ??= {};
-
-    parsed.ticketSystem.logs.valoraciones ??= null;
-    parsed.ticketSystem.logs.transacciones ??= null;
-    parsed.ticketSystem.logs.tickets ??= null;
-
-    parsed.inviteSystem ??= {};
-    parsed.inviteSystem.users ??= {};
-    parsed.inviteSystem.members ??= {};
-
-    parsed.partners ??= {};
-
-    parsed.moderation ??= {};
-    parsed.moderation.warnings ??= {};
-
-    parsed.honeypot ??= {};
-    parsed.honeypot.message ??=
-      HONEYPOT_TEMPLATE;
-
-    parsed.honeypot.channelId ??=
-      parsed.settings.systemChannels.honeypot ||
-      null;
-
-    parsed.honeypot.messageId ??= null;
-    parsed.honeypot.bans ??= 0;
-
-    return parsed;
+    return data;
   } catch (error) {
-    console.error(
-      "Error leyendo data.json:",
-      error
-    );
+    console.error("Error cargando data.json:", error);
 
-    return freshData();
+    return JSON.parse(JSON.stringify(DEFAULT_DATA));
   }
 }
 
-const data = loadData();
+let data = loadData();
 
 function saveData() {
-  fs.writeFileSync(
-    DATA_FILE,
-    JSON.stringify(data, null, 2)
-  );
+  try {
+    fs.writeFileSync(
+      DATA_FILE,
+      JSON.stringify(data, null, 2)
+    );
+  } catch (error) {
+    console.error("Error guardando data.json:", error);
+  }
 }
 
-// =====================================================
+// ======================================================
 // USUARIOS
-// =====================================================
+// ======================================================
 
 function getUser(id) {
   if (!data.users[id]) {
@@ -345,1274 +242,604 @@ function getUser(id) {
         wins3: 0
       }
     };
+
+    saveData();
   }
 
-  const account =
-    data.users[id];
+  const user = data.users[id];
 
-  account.wallet ??= 0;
-  account.bank ??= 0;
-  account.inventory ??= [];
-  account.xp ??= 0;
-  account.level ??= 1;
-  account.cooldowns ??= {};
+  user.wallet ??= 0;
+  user.bank ??= 0;
+  user.inventory ??= [];
+  user.xp ??= 0;
+  user.level ??= 1;
+  user.cooldowns ??= {};
 
-  account.luckRoyale ??= {
-    spins: 0,
-    wins2: 0,
-    wins3: 0
-  };
+  user.luckRoyale ??= {};
+  user.luckRoyale.spins ??= 0;
+  user.luckRoyale.wins2 ??= 0;
+  user.luckRoyale.wins3 ??= 0;
 
-  account.luckRoyale.spins ??= 0;
-  account.luckRoyale.wins2 ??= 0;
-  account.luckRoyale.wins3 ??= 0;
-
-  return account;
+  return user;
 }
 
-// =====================================================
-// UTILIDADES
-// =====================================================
+// ======================================================
+// UTILIDADES GENERALES
+// ======================================================
 
 function random(min, max) {
   return Math.floor(
-    Math.random() *
-      (max - min + 1)
+    Math.random() * (max - min + 1)
   ) + min;
 }
 
-function money(value) {
-  return `$${Math.floor(
-    value
-  ).toLocaleString("es-ES")}`;
-}
-
-function glassEmbed(
-  color = COLORS.primary
-) {
-  return new EmbedBuilder()
-    .setColor(color)
-    .setFooter({
-      text:
-        "LRM Studio  •  Fluent Glass"
-    });
-}
-
-function errorEmbed(text) {
-  return glassEmbed(
-    COLORS.error
-  )
-    .setTitle(
-      `${E.error}  Error`
-    )
-    .setDescription(text);
-}
-
-function successEmbed(text) {
-  return glassEmbed(
-    COLORS.success
-  )
-    .setTitle(
-      `${E.success}  Completado`
-    )
-    .setDescription(text);
-}
-
-function cooldown(
-  account,
-  name,
-  duration
-) {
+function cooldown(user, key, seconds) {
   const now = Date.now();
-
-  const last =
-    account.cooldowns[name] || 0;
+  const last = user.cooldowns[key] || 0;
 
   const remaining =
-    duration -
-    (now - last);
+    seconds * 1000 - (now - last);
 
   if (remaining > 0) {
-    return remaining;
+    return Math.ceil(remaining / 1000);
   }
 
-  account.cooldowns[name] = now;
-
-  saveData();
-
+  user.cooldowns[key] = now;
   return 0;
 }
 
-// =====================================================
-// RANK
-// =====================================================
+function glassEmbed({
+  title,
+  description,
+  color = COLORS.primary,
+  fields = [],
+  footer = true
+}) {
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setDescription(description || null);
 
-function getLevelRank(userId) {
-  const ranking =
-    Object.entries(
-      data.users
-    ).sort((a, b) => {
-      const levelDifference =
-        (b[1].level || 1) -
-        (a[1].level || 1);
-
-      if (
-        levelDifference !== 0
-      ) {
-        return levelDifference;
-      }
-
-      return (
-        (b[1].xp || 0) -
-        (a[1].xp || 0)
-      );
-    });
-
-  const position =
-    ranking.findIndex(
-      ([id]) =>
-        id === userId
-    );
-
-  return position === -1
-    ? ranking.length + 1
-    : position + 1;
-}
-
-// =====================================================
-// LEVEL UP
-// =====================================================
-
-async function sendLevelUp(
-  guild,
-  userId,
-  account
-) {
-  if (!guild) return;
-
-  const channelId =
-    data.settings
-      .systemChannels
-      .niveles;
-
-  if (!channelId) return;
-
-  const channel =
-    guild.channels.cache.get(
-      channelId
-    );
-
-  if (!channel?.isTextBased()) {
-    return;
+  if (fields.length) {
+    embed.addFields(fields);
   }
 
-  const rank =
-    getLevelRank(userId);
+  if (footer) {
+    embed.setFooter({
+      text: "LRM Studio  •  Fluent Glass"
+    });
+  }
 
-  const text =
-    LEVEL_TEMPLATE
-      .replaceAll(
-        "$(user.mention)",
-        `<@${userId}>`
-      )
-      .replaceAll(
-        "$(level)",
-        String(account.level)
-      )
-      .replaceAll(
-        "$(xp)",
-        String(account.xp)
-      )
-      .replaceAll(
-        "$(rank)",
-        String(rank)
-      );
-
-  await channel
-    .send({
-      embeds: [
-        glassEmbed(
-          COLORS.level
-        ).setDescription(text)
-      ]
-    })
-    .catch(() => {});
+  return embed;
 }
 
-async function addXP(
-  id,
-  amount = random(3, 8),
-  guild = null
-) {
-  const account =
-    getUser(id);
+function errorEmbed(description) {
+  return glassEmbed({
+    title: `${E.error} Error`,
+    description,
+    color: COLORS.error
+  });
+}
 
-  account.xp += amount;
+function successEmbed(description) {
+  return glassEmbed({
+    title: `${E.success} Completado`,
+    description,
+    color: COLORS.success
+  });
+}
 
-  let levelsGained = 0;
+// ======================================================
+// XP / NIVELES
+// ======================================================
 
-  while (
-    account.xp >=
-    account.level * 100
-  ) {
-    account.xp -=
-      account.level * 100;
+function xpNeeded(level) {
+  return level * 100;
+}
 
-    account.level++;
+function getRank(guild) {
+  const members = Object.entries(data.users)
+    .map(([id, user]) => ({
+      id,
+      xp: user.xp || 0
+    }))
+    .sort((a, b) => b.xp - a.xp);
 
-    levelsGained++;
+  return members;
+}
+
+function addXP(userId, amount, guild) {
+  const user = getUser(userId);
+
+  user.xp += amount;
+
+  let leveledUp = false;
+
+  while (user.xp >= xpNeeded(user.level)) {
+    user.xp -= xpNeeded(user.level);
+    user.level++;
+    leveledUp = true;
   }
 
   saveData();
 
-  if (
-    levelsGained > 0 &&
-    guild
-  ) {
-    await sendLevelUp(
-      guild,
-      id,
-      account
-    );
-  }
-
-  return levelsGained > 0;
+  return {
+    leveledUp,
+    level: user.level
+  };
 }
 
-// =====================================================
+// ======================================================
 // LOGS
-// =====================================================
+// ======================================================
 
-async function sendLog(
-  guild,
-  type,
-  options = {}
-) {
-  const id =
-    data.settings?.logs?.[type];
+async function sendLog(guild, type, embed) {
+  try {
+    const channelId =
+      data.settings?.logs?.[guild.id]?.[type];
 
-  if (!id) return;
+    if (!channelId) return;
 
-  const channel =
-    guild.channels.cache.get(id);
+    const channel =
+      guild.channels.cache.get(channelId);
 
-  if (!channel?.isTextBased()) {
-    return;
+    if (!channel) return;
+
+    await channel.send({
+      embeds: [embed]
+    });
+  } catch (error) {
+    console.error("Error enviando log:", error);
   }
-
-  const logEmbed =
-    glassEmbed(
-      options.color ||
-      COLORS.info
-    )
-      .setTitle(
-        options.title ||
-        "Log"
-      )
-      .setDescription(
-        options.description ||
-        "Sin información."
-      )
-      .setTimestamp();
-
-  if (
-    options.fields?.length
-  ) {
-    logEmbed.addFields(
-      options.fields
-    );
-  }
-
-  await channel
-    .send({
-      embeds: [logEmbed]
-    })
-    .catch(() => {});
 }
 
 async function logAction(
   guild,
   type,
-  options
+  title,
+  description,
+  color = COLORS.info
 ) {
   await sendLog(
     guild,
     type,
-    options
+    glassEmbed({
+      title,
+      description,
+      color
+    })
   );
+}
 
-  if (type !== "general") {
-    await sendLog(
-      guild,
-      "general",
-      options
+// ======================================================
+// INVITACIONES
+// ======================================================
+
+const inviteCache = new Map();
+
+async function cacheInvites(guild) {
+  try {
+    const invites = await guild.invites.fetch();
+
+    const map = new Map();
+
+    invites.forEach(invite => {
+      map.set(
+        invite.code,
+        invite.uses || 0
+      );
+    });
+
+    inviteCache.set(guild.id, map);
+  } catch (error) {
+    console.error(
+      `No se pudieron cargar invitaciones de ${guild.name}:`,
+      error.message
     );
   }
 }
 
-// =====================================================
-// INVITES
-// =====================================================
+function getInviteChanges(oldMap, newInvites) {
+  const changes = [];
 
-const inviteCache =
-  new Map();
+  for (const invite of newInvites.values()) {
+    const oldUses =
+      oldMap?.get(invite.code) || 0;
 
-async function cacheGuildInvites(
-  guild
-) {
-  const invites =
-    await guild.invites
-      .fetch()
-      .catch(() => null);
+    const newUses =
+      invite.uses || 0;
 
-  if (!invites) {
-    return;
-  }
-
-  inviteCache.set(
-    guild.id,
-    new Map(
-      invites.map(
-        invite => [
-          invite.code,
-          invite.uses || 0
-        ]
-      )
-    )
-  );
-}
-
-function ensureInviteStats(
-  userId
-) {
-  data.inviteSystem.users[
-    userId
-  ] ??= {
-    invites: 0,
-    newAccounts: 0,
-    leaves: 0
-  };
-
-  const stats =
-    data.inviteSystem.users[
-      userId
-    ];
-
-  stats.invites ??= 0;
-  stats.newAccounts ??= 0;
-  stats.leaves ??= 0;
-
-  return stats;
-}
-
-function isNewAccount(user) {
-  const age =
-    Date.now() -
-    user.createdTimestamp;
-
-  return (
-    age <
-    7 * 24 * 60 * 60 * 1000
-  );
-}
-
-client.on(
-  "inviteCreate",
-  async invite => {
-    await cacheGuildInvites(
-      invite.guild
-    );
-  }
-);
-
-client.on(
-  "inviteDelete",
-  async invite => {
-    await cacheGuildInvites(
-      invite.guild
-    );
-  }
-);
-
-client.on(
-  "guildMemberAdd",
-  async member => {
-    const guild =
-      member.guild;
-
-    // WELCOME
-    const welcomeChannelId =
-      data.settings
-        .systemChannels
-        .bienvenida;
-
-    const welcomeChannel =
-      welcomeChannelId
-        ? guild.channels.cache.get(
-            welcomeChannelId
-          )
-        : null;
-
-    if (
-      welcomeChannel?.isTextBased()
-    ) {
-      const text =
-        WELCOME_TEMPLATE
-          .replaceAll(
-            "$(user.mention)",
-            `${member}`
-          )
-          .replaceAll(
-            "$(server.member_count)",
-            String(
-              guild.memberCount
-            )
-          );
-
-      await welcomeChannel
-        .send({
-          embeds: [
-            glassEmbed(
-              COLORS.primary
-            ).setDescription(
-              text
-            )
-          ]
-        })
-        .catch(() => {});
-    }
-
-    // INVITE
-    const before =
-      inviteCache.get(
-        guild.id
-      ) ||
-      new Map();
-
-    const current =
-      await guild.invites
-        .fetch()
-        .catch(() => null);
-
-    if (!current) {
-      return;
-    }
-
-    const usedInvite =
-      current.find(invite => {
-        const oldUses =
-          before.get(
-            invite.code
-          ) || 0;
-
-        return (
-          (invite.uses || 0) >
-          oldUses
-        );
+    if (newUses > oldUses) {
+      changes.push({
+        invite,
+        uses: newUses - oldUses
       });
-
-    inviteCache.set(
-      guild.id,
-      new Map(
-        current.map(
-          invite => [
-            invite.code,
-            invite.uses || 0
-          ]
-        )
-      )
-    );
-
-    if (
-      !usedInvite?.inviter
-    ) {
-      return;
-    }
-
-    const inviter =
-      usedInvite.inviter;
-
-    const stats =
-      ensureInviteStats(
-        inviter.id
-      );
-
-    stats.invites++;
-
-    const newAccount =
-      isNewAccount(
-        member.user
-      );
-
-    if (newAccount) {
-      stats.newAccounts++;
-    }
-
-    data.inviteSystem.members[
-      member.id
-    ] = {
-      inviterId:
-        inviter.id,
-      joinedAt:
-        Date.now(),
-      newAccount
-    };
-
-    saveData();
-
-    const inviteChannelId =
-      data.settings
-        .systemChannels
-        .invites;
-
-    const inviteChannel =
-      inviteChannelId
-        ? guild.channels.cache.get(
-            inviteChannelId
-          )
-        : null;
-
-    if (
-      inviteChannel?.isTextBased()
-    ) {
-      const text =
-        INVITE_TEMPLATE
-          .replaceAll(
-            "$(inviter.mention)",
-            `${inviter}`
-          )
-          .replaceAll(
-            "$(inviter.invites)",
-            String(
-              stats.invites
-            )
-          )
-          .replaceAll(
-            "$(server.member_count)",
-            String(
-              guild.memberCount
-            )
-          );
-
-      await inviteChannel
-        .send({
-          embeds: [
-            glassEmbed(
-              COLORS.info
-            ).setDescription(
-              text
-            )
-          ]
-        })
-        .catch(() => {});
     }
   }
-);
 
-client.on(
-  "guildMemberRemove",
-  member => {
-    const tracked =
-      data.inviteSystem.members[
-        member.id
-      ];
-
-    if (
-      !tracked?.inviterId
-    ) {
-      return;
-    }
-
-    const stats =
-      ensureInviteStats(
-        tracked.inviterId
-      );
-
-    stats.leaves++;
-
-    delete data
-      .inviteSystem
-      .members[
-        member.id
-      ];
-
-    saveData();
-  }
-);
-
-// =====================================================
-// PARTNERS
-// =====================================================
-
-function ensurePartner(
-  userId
-) {
-  data.partners[userId] ??= {
-    points: 0,
-    alliances: 0,
-    affys: 0
-  };
-
-  const partner =
-    data.partners[userId];
-
-  partner.points ??= 0;
-  partner.alliances ??= 0;
-  partner.affys ??= 0;
-
-  return partner;
+  return changes;
 }
 
-function getPartnerRank(
-  userId
-) {
-  const ranking =
-    Object.entries(
-      data.partners
-    ).sort(
-      (a, b) =>
-        (b[1].points || 0) -
-        (a[1].points || 0)
-    );
+// ======================================================
+// RANK DE PARTNERS
+// ======================================================
+
+function getPartnerRank(guildId, points) {
+  const partners =
+    data.partners[guildId] || {};
+
+  const list = Object.entries(
+    partners
+  )
+    .map(([id, partner]) => ({
+      id,
+      points: partner.points || 0
+    }))
+    .sort((a, b) => b.points - a.points);
 
   const index =
-    ranking.findIndex(
-      ([id]) =>
-        id === userId
+    list.findIndex(
+      x => x.points <= points
     );
 
   return index === -1
-    ? ranking.length + 1
+    ? list.length + 1
     : index + 1;
 }
 
-function extractInviteCode(
-  text
-) {
-  const match =
-    String(text).match(
-      /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|discord(?:app)?\.com\/invite\/)([A-Za-z0-9-]+)/i
-    );
-
-  return match?.[1] || null;
-}
-
-async function processPartnerInvite(
-  message,
-  type
-) {
-  const code =
-    extractInviteCode(
-      message.content
-    );
-
-  if (!code) {
-    return;
-  }
-
-  const invite =
-    await client
-      .fetchInvite(code)
-      .catch(() => null);
-
-  if (!invite?.guild) {
-    return;
-  }
-
-  if (
-    invite.guild.id ===
-    message.guild.id
-  ) {
-    return;
-  }
-
-  const partner =
-    ensurePartner(
-      message.author.id
-    );
-
-  partner.points++;
-
-  if (
-    type === "alianza"
-  ) {
-    partner.alliances++;
-  } else {
-    partner.affys++;
-  }
-
-  saveData();
-
-  const rank =
-    getPartnerRank(
-      message.author.id
-    );
-
-  const template =
-    type === "alianza"
-      ? ALLIANCE_TEMPLATE
-      : AFFY_TEMPLATE;
-
-  const text =
-    template
-      .replaceAll(
-        "$(invite.guild.name)",
-        invite.guild.name ||
-          "Servidor"
-      )
-      .replaceAll(
-        "$(user.mention)",
-        `${message.author}`
-      )
-      .replaceAll(
-        "$(partner.rank)",
-        String(rank)
-      )
-      .replaceAll(
-        "$(partner.points)",
-        String(
-          partner.points
-        )
-      );
-
-  await message
-    .reply({
-      embeds: [
-        glassEmbed(
-          type === "alianza"
-            ? COLORS.primary
-            : COLORS.royale
-        ).setDescription(
-          text
-        )
-      ]
-    })
-    .catch(() => {});
-}
-
-// =====================================================
+// ======================================================
 // LUCK ROYALE
-// =====================================================
+// ======================================================
 
-const ROYALE_EMOJIS = [
+const ROYALE_POOL = [
   "🍒",
   "💎",
   "⭐",
   "🍀",
   "🔥",
-  "👑",
-  "🌙",
-  "⚡",
-  "🎯",
-  "🪙",
-  "🎁",
-  "🏆",
-  "🧿",
-  "🔮",
-  "🌟"
+  "💜",
+  "🌟",
+  "👑"
 ];
 
-function royaleEmoji() {
-  return ROYALE_EMOJIS[
-    random(
-      0,
-      ROYALE_EMOJIS.length - 1
-    )
-  ];
-}
+async function startLuckRoyale(interaction) {
+  const user = getUser(interaction.user.id);
 
-function royaleRoll() {
-  return [
-    royaleEmoji(),
-    royaleEmoji(),
-    royaleEmoji()
-  ];
-}
+  const cd = cooldown(
+    user,
+    "luckroyale",
+    30
+  );
 
-function royaleText(roll) {
-  return `╭──────────────╮
-│   ${roll[0]}   ${roll[1]}   ${roll[2]}   │
-╰──────────────╯`;
-}
-
-function royaleResult(roll) {
-  const [a, b, c] =
-    roll;
-
-  if (
-    a === b &&
-    b === c
-  ) {
-    return "triple";
+  if (cd) {
+    return interaction.reply({
+      embeds: [
+        errorEmbed(
+          `${E.time} Debes esperar **${cd}s** antes de volver a usar Luck Royale.`
+        )
+      ],
+      ephemeral: true
+    });
   }
 
-  if (
+  const accept = new ButtonBuilder()
+    .setCustomId("luck_accept")
+    .setLabel("Aceptar")
+    .setStyle(ButtonStyle.Success);
+
+  const reject = new ButtonBuilder()
+    .setCustomId("luck_reject")
+    .setLabel("Rechazar")
+    .setStyle(ButtonStyle.Secondary);
+
+  const row = new ActionRowBuilder()
+    .addComponents(
+      accept,
+      reject
+    );
+
+  await interaction.reply({
+    embeds: [
+      glassEmbed({
+        title: `${E.royale} Luck Royale`,
+        description:
+          "🎰 Vas a iniciar una ronda de Luck Royale.\n\n" +
+          "💡 **No cuesta Coins Nisk.**\n" +
+          "🎁 Puedes conseguir premios de Royale.\n\n" +
+          "¿Quieres continuar?",
+        color: COLORS.royale
+      })
+    ],
+    components: [row]
+  });
+}
+
+async function runLuckRoyale(interaction) {
+  const user = getUser(
+    interaction.user.id
+  );
+
+  user.luckRoyale.spins++;
+
+  const message = await interaction.message;
+
+  const row = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId("luck_running")
+        .setLabel("Girando...")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true)
+    );
+
+  await interaction.update({
+    embeds: [
+      glassEmbed({
+        title: `${E.royale} Luck Royale`,
+        description:
+          "✨ La ruleta está girando...",
+        color: COLORS.royale
+      })
+    ],
+    components: [row]
+  });
+
+  for (let i = 0; i < 8; i++) {
+    const emojis = [
+      ROYALE_POOL[random(0, ROYALE_POOL.length - 1)],
+      ROYALE_POOL[random(0, ROYALE_POOL.length - 1)],
+      ROYALE_POOL[random(0, ROYALE_POOL.length - 1)]
+    ];
+
+    await new Promise(resolve =>
+      setTimeout(resolve, 500)
+    );
+
+    await message.edit({
+      embeds: [
+        glassEmbed({
+          title: `${E.royale} Luck Royale`,
+          description:
+            `🎰 **${emojis.join("  |  ")}**`,
+          color: COLORS.royale
+        })
+      ],
+      components: [row]
+    });
+  }
+
+  const final = [
+    ROYALE_POOL[random(0, ROYALE_POOL.length - 1)],
+    ROYALE_POOL[random(0, ROYALE_POOL.length - 1)],
+    ROYALE_POOL[random(0, ROYALE_POOL.length - 1)]
+  ];
+
+  const [a, b, c] = final;
+
+  let result;
+  let reward = null;
+  let xp = 3;
+
+  if (a === b && b === c) {
+    user.inventory.push(
+      `Premio Royale ${a}`
+    );
+
+    user.luckRoyale.wins3++;
+    xp = 15;
+
+    result =
+      `👑 **TRIPLE ROYALE**\n\n` +
+      `🎁 Premio: \`Premio Royale ${a}\``;
+  } else if (
     a === b ||
     a === c ||
     b === c
   ) {
-    return "double";
-  }
-
-  return "none";
-}
-
-function royaleWarning(
-  userId
-) {
-  const row =
-    new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(
-            `royale_accept:${userId}`
-          )
-          .setLabel(
-            "Aceptar"
-          )
-          .setStyle(
-            ButtonStyle.Success
-          ),
-
-        new ButtonBuilder()
-          .setCustomId(
-            `royale_reject:${userId}`
-          )
-          .setLabel(
-            "Rechazar"
-          )
-          .setStyle(
-            ButtonStyle.Secondary
-          )
-      );
-
-  return {
-    embeds: [
-      glassEmbed(
-        COLORS.royale
-      )
-        .setTitle(
-          `${E.royale}  Luck Royale`
-        )
-        .setDescription(
-          `Estás a punto de iniciar **Luck Royale**.\n\n` +
-          `Esta versión usa una **tirada gratuita** y no descuenta dinero de tu balance.\n\n` +
-          `**Premios**\n` +
-          `${E.gain} 3 emojis iguales → premio especial\n` +
-          `${E.gain} 2 emojis iguales → premio normal\n` +
-          `${E.loss} Todos diferentes → sin premio\n\n` +
-          `Hay **${ROYALE_EMOJIS.length} símbolos** diferentes en la ruleta.\n\n` +
-          `¿Quieres comenzar?`
-        )
-    ],
-    components: [
-      row
-    ]
-  };
-}
-
-async function startRoyale(
-  interaction
-) {
-  const user =
-    interaction.user;
-
-  const account =
-    getUser(user.id);
-
-  const remaining =
-    cooldown(
-      account,
-      "luckroyale",
-      30_000
+    user.inventory.push(
+      "Ficha Royale"
     );
 
-  if (remaining) {
-    return interaction.update({
-      embeds: [
-        errorEmbed(
-          `Debes esperar **${Math.ceil(
-            remaining / 1000
-          )} segundos** antes de volver a jugar.`
-        )
-      ],
-      components: []
-    });
-  }
+    user.luckRoyale.wins2++;
+    xp = 8;
 
-  account.luckRoyale.spins++;
-
-  saveData();
-
-  await interaction.update({
-    embeds: [
-      glassEmbed(
-        COLORS.royale
-      )
-        .setTitle(
-          `${E.royale}  Luck Royale`
-        )
-        .setDescription(
-          `**Girando...**\n\n` +
-          royaleText(
-            royaleRoll()
-          )
-        )
-    ],
-    components: []
-  });
-
-  for (
-    let i = 0;
-    i < 8;
-    i++
-  ) {
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          500
-        )
-    );
-
-    await interaction
-      .editReply({
-        embeds: [
-          glassEmbed(
-            COLORS.royale
-          )
-            .setTitle(
-              `${E.royale}  Luck Royale`
-            )
-            .setDescription(
-              `**Girando... ${
-                i + 1
-              }/8**\n\n` +
-              royaleText(
-                royaleRoll()
-              )
-            )
-        ]
-      })
-      .catch(() => {});
-  }
-
-  const finalRoll =
-    royaleRoll();
-
-  const result =
-    royaleResult(
-      finalRoll
-    );
-
-  let resultText;
-
-  if (
-    result === "triple"
-  ) {
-    account.luckRoyale.wins3++;
-
-    const prize =
-      `Premio Royale ${finalRoll[0]}`;
-
-    account.inventory.push(
-      prize
-    );
-
-    resultText =
-      `${E.success} **JACKPOT**\n\n` +
-      `Conseguiste **3 símbolos iguales**.\n\n` +
-      `${E.inventory} Recibiste:\n**${prize}**`;
-  } else if (
-    result === "double"
-  ) {
-    account.luckRoyale.wins2++;
-
-    const prize =
-      "Ficha Royale";
-
-    account.inventory.push(
-      prize
-    );
-
-    resultText =
-      `${E.success} **¡Ganaste!**\n\n` +
-      `Conseguiste **2 símbolos iguales**.\n\n` +
-      `${E.inventory} Recibiste:\n**${prize}**`;
+    result =
+      `✨ **DOBLE ROYALE**\n\n` +
+      `🎁 Premio: \`Ficha Royale\``;
   } else {
-    resultText =
-      `${E.loss} **Sin premio**\n\n` +
-      `Los 3 símbolos fueron diferentes.`;
+    result =
+      "🌙 No hubo combinación esta vez.\n\n" +
+      "⭐ Ganaste experiencia por participar.";
   }
 
-  await addXP(
-    user.id,
-    result === "triple"
-      ? 15
-      : result === "double"
-        ? 8
-        : 3,
+  addXP(
+    interaction.user.id,
+    xp,
     interaction.guild
   );
 
   saveData();
 
-  return interaction.editReply({
+  await message.edit({
     embeds: [
-      glassEmbed(
-        result === "none"
-          ? COLORS.warning
-          : COLORS.royale
-      )
-        .setTitle(
-          `${E.royale}  Resultado`
-        )
-        .setDescription(
-          `${royaleText(
-            finalRoll
-          )}\n\n${resultText}\n\n` +
-          `**Estadísticas**\n` +
-          `Tiradas: **${account.luckRoyale.spins}**\n` +
-          `Dobles: **${account.luckRoyale.wins2}**\n` +
-          `Triples: **${account.luckRoyale.wins3}**`
-        )
-    ]
+      glassEmbed({
+        title: `${E.royale} Resultado Royale`,
+        description:
+          `🎰 **${final.join("  |  ")}**\n\n` +
+          result +
+          `\n\n⭐ XP ganada: **${xp}**`,
+        color: COLORS.royale
+      })
+    ],
+    components: []
   });
 }
 
-// =====================================================
-// SLASH USER
-// =====================================================
+// ======================================================
+// COMANDOS DE USUARIO
+// ======================================================
 
 const userCommands = [
 
   new SlashCommandBuilder()
     .setName("help")
-    .setDescription(
-      "Muestra los comandos."
-    ),
+    .setDescription("Muestra la ayuda de LRM Studio"),
+
+  new SlashCommandBuilder()
+    .setName("utilidades")
+    .setDescription("Abre el menú de utilidades"),
 
   new SlashCommandBuilder()
     .setName("balance")
-    .setDescription(
-      "Consulta un balance."
-    )
-    .addUserOption(o =>
-      o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
-    ),
+    .setDescription("Muestra tu dinero"),
 
   new SlashCommandBuilder()
     .setName("work")
-    .setDescription(
-      "Trabaja y consigue dinero."
-    ),
+    .setDescription("Trabaja y gana Coins Nisk"),
 
   new SlashCommandBuilder()
     .setName("risk")
-    .setDescription(
-      "Arriesga dinero."
-    ),
+    .setDescription("Arriesga dinero"),
 
   new SlashCommandBuilder()
     .setName("crime")
-    .setDescription(
-      "Intenta conseguir dinero mediante crime."
-    ),
+    .setDescription("Comete un crimen"),
 
   new SlashCommandBuilder()
     .setName("daily")
-    .setDescription(
-      "Recompensa diaria."
-    ),
+    .setDescription("Recoge tu recompensa diaria"),
 
   new SlashCommandBuilder()
     .setName("dep")
-    .setDescription(
-      "Deposita dinero."
-    )
-    .addIntegerOption(o =>
-      o.setName("cantidad")
-        .setDescription(
-          "Cantidad"
-        )
-        .setMinValue(1)
+    .setDescription("Deposita dinero en el banco")
+    .addIntegerOption(option =>
+      option
+        .setName("cantidad")
+        .setDescription("Cantidad a depositar")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("with")
-    .setDescription(
-      "Retira dinero."
-    )
-    .addIntegerOption(o =>
-      o.setName("cantidad")
-        .setDescription(
-          "Cantidad"
-        )
-        .setMinValue(1)
+    .setDescription("Retira dinero del banco")
+    .addIntegerOption(option =>
+      option
+        .setName("cantidad")
+        .setDescription("Cantidad a retirar")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("pay")
-    .setDescription(
-      "Envía dinero."
-    )
-    .addUserOption(o =>
-      o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
+    .setDescription("Paga a otro usuario")
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
         .setRequired(true)
     )
-    .addIntegerOption(o =>
-      o.setName("cantidad")
-        .setDescription(
-          "Cantidad"
-        )
-        .setMinValue(1)
+    .addIntegerOption(option =>
+      option
+        .setName("cantidad")
+        .setDescription("Cantidad")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("profile")
-    .setDescription(
-      "Muestra un perfil."
-    )
-    .addUserOption(o =>
-      o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
-    ),
+    .setDescription("Muestra tu perfil"),
 
   new SlashCommandBuilder()
     .setName("inventory")
-    .setDescription(
-      "Muestra tu inventario."
-    ),
+    .setDescription("Muestra tu inventario"),
 
   new SlashCommandBuilder()
     .setName("rank")
-    .setDescription(
-      "Muestra tu nivel."
-    ),
+    .setDescription("Muestra tu ranking"),
 
   new SlashCommandBuilder()
     .setName("shop")
-    .setDescription(
-      "Muestra la tienda."
-    ),
+    .setDescription("Muestra la tienda"),
 
   new SlashCommandBuilder()
     .setName("buy")
-    .setDescription(
-      "Compra un objeto."
-    )
-    .addStringOption(o =>
-      o.setName("producto")
-        .setDescription(
-          "Producto"
-        )
+    .setDescription("Compra un artículo")
+    .addStringOption(option =>
+      option
+        .setName("item")
+        .setDescription("Artículo")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("use")
-    .setDescription(
-      "Usa un objeto."
-    )
-    .addStringOption(o =>
-      o.setName("objeto")
-        .setDescription(
-          "Objeto"
-        )
+    .setDescription("Usa un artículo")
+    .addStringOption(option =>
+      option
+        .setName("item")
+        .setDescription("Artículo")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("baltop")
-    .setDescription(
-      "Ranking de dinero."
-    ),
+    .setDescription("Ranking de dinero"),
 
   new SlashCommandBuilder()
     .setName("leveltop")
-    .setDescription(
-      "Ranking de niveles."
-    ),
+    .setDescription("Ranking de niveles"),
 
   new SlashCommandBuilder()
     .setName("coinflip")
-    .setDescription(
-      "Cara o cruz."
-    ),
+    .setDescription("Lanza una moneda"),
 
   new SlashCommandBuilder()
     .setName("8ball")
-    .setDescription(
-      "Pregunta a la bola."
-    )
-    .addStringOption(o =>
-      o.setName("pregunta")
-        .setDescription(
-          "Pregunta"
-        )
+    .setDescription("Pregunta a la bola 8")
+    .addStringOption(option =>
+      option
+        .setName("pregunta")
+        .setDescription("Tu pregunta")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("random")
-    .setDescription(
-      "Genera un número aleatorio."
-    )
-    .addIntegerOption(o =>
-      o.setName("min")
-        .setDescription(
-          "Mínimo"
-        )
+    .setDescription("Genera un número aleatorio")
+    .addIntegerOption(option =>
+      option
+        .setName("min")
+        .setDescription("Mínimo")
         .setRequired(true)
     )
-    .addIntegerOption(o =>
-      o.setName("max")
-        .setDescription(
-          "Máximo"
-        )
+    .addIntegerOption(option =>
+      option
+        .setName("max")
+        .setDescription("Máximo")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("dice")
-    .setDescription(
-      "Lanza un dado."
-    ),
+    .setDescription("Lanza un dado"),
 
   new SlashCommandBuilder()
     .setName("choose")
-    .setDescription(
-      "Elige entre varias opciones."
-    )
-    .addStringOption(o =>
-      o.setName("opciones")
-        .setDescription(
-          "Minecraft | Sonic | Rocket League"
-        )
+    .setDescription("Elige entre opciones")
+    .addStringOption(option =>
+      option
+        .setName("opciones")
+        .setDescription("Opciones separadas por comas")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("rps")
-    .setDescription(
-      "Piedra, papel o tijera."
-    )
-    .addStringOption(o =>
-      o.setName("eleccion")
-        .setDescription(
-          "Tu elección"
-        )
+    .setDescription("Piedra, papel o tijera")
+    .addStringOption(option =>
+      option
+        .setName("opcion")
+        .setDescription("Tu elección")
         .setRequired(true)
         .addChoices(
           {
@@ -1632,2329 +859,1938 @@ const userCommands = [
 
   new SlashCommandBuilder()
     .setName("luckroyale")
-    .setDescription(
-      "Juega Luck Royale."
-    ),
+    .setDescription("Juega Luck Royale"),
 
   new SlashCommandBuilder()
     .setName("invitever")
-    .setDescription(
-      "Muestra estadísticas de invitaciones."
-    )
-    .addUserOption(o =>
-      o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
-    ),
+    .setDescription("Muestra tus invitaciones"),
 
   new SlashCommandBuilder()
     .setName("sugerencia")
-    .setDescription(
-      "Envía una sugerencia."
-    )
-    .addStringOption(o =>
-      o.setName("mensaje")
-        .setDescription(
-          "Sugerencia"
-        )
-        .setMaxLength(1500)
+    .setDescription("Envía una sugerencia")
+    .addStringOption(option =>
+      option
+        .setName("texto")
+        .setDescription("Tu sugerencia")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("ping")
-    .setDescription(
-      "Muestra el ping."
-    ),
+    .setDescription("Muestra el ping del bot"),
 
   new SlashCommandBuilder()
     .setName("botinfo")
-    .setDescription(
-      "Información del bot."
-    ),
+    .setDescription("Información del bot"),
 
   new SlashCommandBuilder()
     .setName("serverinfo")
-    .setDescription(
-      "Información del servidor."
-    ),
+    .setDescription("Información del servidor"),
 
   new SlashCommandBuilder()
     .setName("membercount")
-    .setDescription(
-      "Muestra la cantidad de miembros."
-    ),
+    .setDescription("Muestra los miembros"),
 
   new SlashCommandBuilder()
     .setName("uptime")
-    .setDescription(
-      "Muestra el tiempo encendido."
-    ),
+    .setDescription("Muestra el tiempo activo"),
 
   new SlashCommandBuilder()
     .setName("userinfo")
-    .setDescription(
-      "Información de usuario."
-    )
-    .addUserOption(o =>
-      o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
+    .setDescription("Muestra información de un usuario")
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(false)
     ),
 
   new SlashCommandBuilder()
     .setName("avatar")
-    .setDescription(
-      "Muestra un avatar."
-    )
-    .addUserOption(o =>
-      o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
+    .setDescription("Muestra el avatar")
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(false)
     )
 ];
 
-// =====================================================
+// ======================================================
 // REGISTRO DE COMANDOS
-// =====================================================
-
-// IMPORTANTE:
-// admin.js puede devolver SlashCommandBuilder
-// o comandos que ya están en JSON.
-// Esta función acepta ambos.
+// ======================================================
 
 const allCommands = [
   ...userCommands,
   ...adminCommands
 ];
 
-const commands =
-  allCommands.map(command => {
-    if (
-      command &&
-      typeof command.toJSON ===
-        "function"
-    ) {
-      return command.toJSON();
-    }
-
-    return command;
-  });
-
-async function registerCommands() {
+const commands = allCommands.map(command => {
   if (
-    !TOKEN ||
-    !CLIENT_ID
+    command &&
+    typeof command.toJSON === "function"
   ) {
-    console.error(
-      "Falta DISCORD_TOKEN o CLIENT_ID."
-    );
-
-    return;
+    return command.toJSON();
   }
 
-  try {
-    const rest =
-      new REST({
-        version: "10"
-      }).setToken(
-        TOKEN
-      );
+  return command;
+});
 
-    await rest.put(
-      Routes.applicationCommands(
-        CLIENT_ID
-      ),
+// ======================================================
+// DEPENDENCIAS DEL ADMIN
+// ======================================================
+
+setupAdmin({
+  client,
+  data,
+  saveData,
+  sendLog,
+  logAction,
+  getUser,
+  prefix: PREFIX,
+  colors: COLORS,
+  symbols: E
+});
+
+// ======================================================
+// PARTE 1 TERMINA AQUÍ
+// ======================================================
+// ======================================================
+// UTILIDADES
+// ======================================================
+
+function utilitiesEmbed() {
+  return glassEmbed({
+    title: "🛠️ Utilidades",
+    description:
+      "Selecciona una utilidad del menú para usarla.\n\n" +
+      "Estas herramientas están disponibles para todos los miembros.",
+    color: COLORS.info,
+    fields: [
       {
-        body: commands
+        name: "📊 Información",
+        value:
+          "🏓 Ping\n" +
+          "🤖 Bot Info\n" +
+          "🖥️ Server Info\n" +
+          "👥 Miembros\n" +
+          "⏱️ Uptime",
+        inline: true
+      },
+      {
+        name: "👤 Usuario",
+        value:
+          "👤 User Info\n" +
+          "🖼️ Avatar\n" +
+          "📨 Invitaciones",
+        inline: true
+      },
+      {
+        name: "🎮 Diversión",
+        value:
+          "🎲 Random\n" +
+          "🎲 Dado\n" +
+          "🎯 Choose\n" +
+          "✊ Piedra Papel Tijera\n" +
+          "🔮 8Ball",
+        inline: false
       }
-    );
-
-    console.log(
-      `✓ ${commands.length} comandos slash registrados.`
-    );
-  } catch (error) {
-    console.error(
-      "Error registrando comandos:",
-      error
-    );
-  }
+    ]
+  });
 }
 
-// =====================================================
-// ADMIN
-// =====================================================
+function utilitiesMenu() {
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("lrm_utilities_menu")
+      .setPlaceholder("Selecciona una utilidad...")
+      .addOptions([
+        {
+          label: "Ping",
+          description: "Muestra la latencia del bot",
+          value: "ping",
+          emoji: "🏓"
+        },
+        {
+          label: "Bot Info",
+          description: "Información de LRM Studio",
+          value: "botinfo",
+          emoji: "🤖"
+        },
+        {
+          label: "Server Info",
+          description: "Información del servidor",
+          value: "serverinfo",
+          emoji: "🖥️"
+        },
+        {
+          label: "Miembros",
+          description: "Muestra la cantidad de miembros",
+          value: "membercount",
+          emoji: "👥"
+        },
+        {
+          label: "Uptime",
+          description: "Tiempo que lleva activo el bot",
+          value: "uptime",
+          emoji: "⏱️"
+        },
+        {
+          label: "User Info",
+          description: "Información sobre vos",
+          value: "userinfo",
+          emoji: "👤"
+        },
+        {
+          label: "Avatar",
+          description: "Muestra tu avatar",
+          value: "avatar",
+          emoji: "🖼️"
+        },
+        {
+          label: "Invitaciones",
+          description: "Muestra tus invitaciones",
+          value: "invitever",
+          emoji: "📨"
+        },
+        {
+          label: "Random",
+          description: "Genera un número aleatorio",
+          value: "random",
+          emoji: "🎲"
+        },
+        {
+          label: "Dado",
+          description: "Lanza un dado",
+          value: "dice",
+          emoji: "🎲"
+        },
+        {
+          label: "Choose",
+          description: "Elige entre varias opciones",
+          value: "choose",
+          emoji: "🎯"
+        },
+        {
+          label: "Piedra Papel Tijera",
+          description: "Juega contra el bot",
+          value: "rps",
+          emoji: "✊"
+        },
+        {
+          label: "8Ball",
+          description: "Pregunta a la bola 8",
+          value: "8ball",
+          emoji: "🔮"
+        }
+      ])
+  );
+}
 
-setupAdmin(
-  client,
-  {
-    data,
-    saveData,
-    sendLog,
-    logAction,
-    getUser,
-    prefix: PREFIX,
-    colors: COLORS,
-    symbols: E
-  }
-);
+// ======================================================
+// EJECUTAR COMANDOS
+// ======================================================
 
-// =====================================================
-// USER COMMAND LOGIC
-// =====================================================
+async function executeUserCommand(interaction) {
+  const command = interaction.commandName;
+  const user = getUser(interaction.user.id);
 
-async function executeUserCommand(
-  ctx
-) {
-  const {
-    command,
-    user,
-    guild,
-    member,
-    getTarget,
-    getInteger,
-    getString,
-    reply
-  } = ctx;
-
-  // ---------------------------------------------------
+  // ====================================================
   // HELP
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "help"
-  ) {
-    return reply({
+  if (command === "help") {
+    return interaction.reply({
       embeds: [
-        glassEmbed()
-          .setTitle(
-            "◉ LRM Studio • Help"
-          )
-          .setDescription(
-            `Usá **.help** para abrir el menú interactivo.\n\n` +
-            `También podés usar **/help**.\n\n` +
-            `Desde el menú vas a encontrar las categorías de comandos de LRM Studio.`
-          )
+        glassEmbed({
+          title: "📚 LRM Studio",
+          description:
+            "Selecciona una categoría desde el menú para consultar los comandos disponibles.",
+          color: COLORS.primary,
+          fields: [
+            {
+              name: "📚 General",
+              value:
+                "`/help` `/utilidades` `/ping` `/botinfo`",
+              inline: false
+            },
+            {
+              name: "🎮 Economía",
+              value:
+                "`/balance` `/work` `/risk` `/crime` `/daily` `/dep` `/with` `/pay`",
+              inline: false
+            },
+            {
+              name: "🏆 Perfil",
+              value:
+                "`/profile` `/inventory` `/rank` `/leveltop` `/baltop`",
+              inline: false
+            },
+            {
+              name: "📊 Diversión",
+              value:
+                "`/coinflip` `/8ball` `/random` `/dice` `/choose` `/rps` `/luckroyale`",
+              inline: false
+            },
+            {
+              name: "ℹ️ Servidor",
+              value:
+                "`/serverinfo` `/membercount` `/userinfo` `/avatar` `/uptime`",
+              inline: false
+            }
+          ]
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
-  // LUCK ROYALE
-  // ---------------------------------------------------
+  // ====================================================
+  // UTILIDADES
+  // ====================================================
 
-  if (
-    command === "luckroyale"
-  ) {
-    return reply(
-      royaleWarning(
-        user.id
-      )
-    );
+  if (command === "utilidades") {
+    return interaction.reply({
+      embeds: [utilitiesEmbed()],
+      components: [utilitiesMenu()]
+    });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // BALANCE
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "balance"
-  ) {
-    const target =
-      getTarget() ||
-      user;
-
-    const account =
-      getUser(
-        target.id
-      );
-
-    return reply({
+  if (command === "balance") {
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.economy
-        )
-          .setTitle(
-            `${E.money}  Balance`
-          )
-          .setThumbnail(
-            target.displayAvatarURL()
-          )
-          .setDescription(
-            `${target}\n\n` +
-            `${E.money} Wallet\n**${money(
-              account.wallet
-            )}**\n\n` +
-            `${E.bank} Banco\n**${money(
-              account.bank
-            )}**\n\n` +
-            `${E.transfer} Total\n**${money(
-              account.wallet +
-              account.bank
-            )}**`
-          )
+        glassEmbed({
+          title: `${E.money} Balance`,
+          description:
+            `💰 Wallet: **${user.wallet} Coins Nisk**\n` +
+            `🏦 Banco: **${user.bank} Coins Nisk**\n\n` +
+            `💵 Total: **${user.wallet + user.bank} Coins Nisk**`,
+          color: COLORS.economy
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // WORK
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "work"
-  ) {
-    const account =
-      getUser(
-        user.id
-      );
+  if (command === "work") {
+    const cd = cooldown(
+      user,
+      "work",
+      30
+    );
 
-    const remaining =
-      cooldown(
-        account,
-        "work",
-        30_000
-      );
-
-    if (remaining) {
-      return reply({
+    if (cd) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            `Espera **${Math.ceil(
-              remaining / 1000
-            )}s**.`
+            `${E.time} Debes esperar **${cd}s** para volver a trabajar.`
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    const reward =
-      random(
-        20,
-        30
-      );
+    const amount = random(20, 30);
 
-    account.wallet +=
-      reward;
+    user.wallet += amount;
 
-    await addXP(
-      user.id,
+    addXP(
+      interaction.user.id,
       random(3, 8),
-      guild
+      interaction.guild
     );
 
     saveData();
 
-    return reply({
+    return interaction.reply({
       embeds: [
         successEmbed(
-          `Ganaste **${money(
-            reward
-          )}** trabajando.\n\n` +
-          `Wallet: **${money(
-            account.wallet
-          )}**`
+          `💼 Trabajaste y ganaste **${amount} Coins Nisk**.\n\n` +
+          `💰 Wallet: **${user.wallet}**`
         )
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // RISK
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "risk"
-  ) {
-    const account =
-      getUser(
-        user.id
-      );
+  if (command === "risk") {
+    const cd = cooldown(
+      user,
+      "risk",
+      60
+    );
 
-    const remaining =
-      cooldown(
-        account,
-        "risk",
-        60_000
-      );
-
-    if (remaining) {
-      return reply({
+    if (cd) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            `Debes esperar **${Math.ceil(
-              remaining / 1000
-            )}s** antes de usar risk nuevamente.`
+            `${E.time} Debes esperar **${cd}s**.`
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    const won =
-      Math.random() < 0.30;
+    const won = Math.random() < 0.30;
 
     if (won) {
-      const amount =
-        random(
-          40,
-          70
-        );
+      const amount = random(40, 70);
 
-      account.wallet +=
-        amount;
+      user.wallet += amount;
 
-      await addXP(
-        user.id,
+      addXP(
+        interaction.user.id,
         random(3, 8),
-        guild
+        interaction.guild
       );
 
       saveData();
 
-      return reply({
+      return interaction.reply({
         embeds: [
-          glassEmbed(
-            COLORS.success
+          successEmbed(
+            `🎯 Ganaste **${amount} Coins Nisk**.\n\n` +
+            `💰 Wallet: **${user.wallet}**`
           )
-            .setTitle(
-              `${E.gain}  Risk`
-            )
-            .setDescription(
-              `**¡Ganaste!**\n\n` +
-              `Recibiste **${money(
-                amount
-              )}**.\n\n` +
-              `Wallet: **${money(
-                account.wallet
-              )}**`
-            )
         ]
       });
     }
 
-    const loss =
-      random(
-        50,
-        100
-      );
+    const loss = random(50, 100);
 
-    account.wallet -=
-      loss;
+    user.wallet -= loss;
 
-    await addXP(
-      user.id,
+    addXP(
+      interaction.user.id,
       random(3, 8),
-      guild
+      interaction.guild
     );
 
     saveData();
 
-    return reply({
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.error
+        errorEmbed(
+          `💥 Perdiste **${loss} Coins Nisk**.\n\n` +
+          `💰 Wallet: **${user.wallet}**`
         )
-          .setTitle(
-            `${E.loss}  Risk`
-          )
-          .setDescription(
-            `**Perdiste.**\n\n` +
-            `Perdiste **${money(
-              loss
-            )}**.\n\n` +
-            `Wallet: **${money(
-              account.wallet
-            )}**`
-          )
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // CRIME
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "crime"
-  ) {
-    const account =
-      getUser(
-        user.id
-      );
+  if (command === "crime") {
+    const cd = cooldown(
+      user,
+      "crime",
+      120
+    );
 
-    const remaining =
-      cooldown(
-        account,
-        "crime",
-        120_000
-      );
-
-    if (remaining) {
-      return reply({
+    if (cd) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            `Debes esperar **${Math.ceil(
-              remaining / 1000
-            )}s** antes de usar crime nuevamente.`
+            `${E.time} Debes esperar **${cd}s**.`
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    const won =
-      Math.random() < 0.20;
+    const won = Math.random() < 0.20;
 
     if (won) {
-      const amount =
-        random(
-          50,
-          80
-        );
+      const amount = random(50, 80);
 
-      account.wallet +=
-        amount;
+      user.wallet += amount;
 
-      await addXP(
-        user.id,
+      addXP(
+        interaction.user.id,
         random(3, 8),
-        guild
+        interaction.guild
       );
 
       saveData();
 
-      return reply({
+      return interaction.reply({
         embeds: [
-          glassEmbed(
-            COLORS.success
+          successEmbed(
+            `🕶️ Salió bien y ganaste **${amount} Coins Nisk**.\n\n` +
+            `💰 Wallet: **${user.wallet}**`
           )
-            .setTitle(
-              `${E.gain}  Crime`
-            )
-            .setDescription(
-              `**¡Salió bien!**\n\n` +
-              `Ganaste **${money(
-                amount
-              )}**.\n\n` +
-              `Wallet: **${money(
-                account.wallet
-              )}**`
-            )
         ]
       });
     }
 
-    const loss =
-      random(
-        70,
-        200
-      );
+    const loss = random(70, 200);
 
-    account.wallet -=
-      loss;
+    user.wallet -= loss;
 
-    await addXP(
-      user.id,
+    addXP(
+      interaction.user.id,
       random(3, 8),
-      guild
+      interaction.guild
     );
 
     saveData();
 
-    return reply({
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.error
+        errorEmbed(
+          `🚨 Fallaste y perdiste **${loss} Coins Nisk**.\n\n` +
+          `💰 Wallet: **${user.wallet}**`
         )
-          .setTitle(
-            `${E.loss}  Crime`
-          )
-          .setDescription(
-            `**Fallaste.**\n\n` +
-            `Perdiste **${money(
-              loss
-            )}**.\n\n` +
-            `Wallet: **${money(
-              account.wallet
-            )}**`
-          )
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // DAILY
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "daily"
-  ) {
-    const account =
-      getUser(
-        user.id
-      );
+  if (command === "daily") {
+    const cd = cooldown(
+      user,
+      "daily",
+      86400
+    );
 
-    const remaining =
-      cooldown(
-        account,
-        "daily",
-        86_400_000
-      );
-
-    if (remaining) {
-      return reply({
+    if (cd) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            "Tu daily todavía no está disponible."
+            `${E.time} Ya reclamaste tu recompensa. Espera **${cd}s**.`
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    account.wallet +=
-      50;
+    user.wallet += 50;
 
-    await addXP(
-      user.id,
-      5,
-      guild
+    addXP(
+      interaction.user.id,
+      random(3, 8),
+      interaction.guild
     );
 
     saveData();
 
-    return reply({
+    return interaction.reply({
       embeds: [
         successEmbed(
-          `Recibiste **$50**.\n\n` +
-          `Wallet: **${money(
-            account.wallet
-          )}**`
+          `🎁 Recibiste **50 Coins Nisk** como recompensa diaria.\n\n` +
+          `💰 Wallet: **${user.wallet}**`
         )
       ]
     });
   }
 
-  // ---------------------------------------------------
-  // DEP / WITH
-  // ---------------------------------------------------
+  // ====================================================
+  // DEP
+  // ====================================================
 
-  if (
-    command === "dep" ||
-    command === "with"
-  ) {
+  if (command === "dep") {
     const amount =
-      getInteger(0);
+      interaction.options.getInteger("cantidad");
 
-    if (
-      !amount ||
-      amount <= 0
-    ) {
-      return reply({
+    if (amount <= 0) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            "Indica una cantidad válida."
+            "La cantidad debe ser mayor que 0."
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    const account =
-      getUser(
-        user.id
-      );
-
-    if (
-      command === "dep"
-    ) {
-      if (
-        account.wallet <
-        amount
-      ) {
-        return reply({
-          embeds: [
-            errorEmbed(
-              "No tienes suficiente dinero."
-            )
-          ]
-        });
-      }
-
-      account.wallet -=
-        amount;
-
-      account.bank +=
-        amount;
-    } else {
-      if (
-        account.bank <
-        amount
-      ) {
-        return reply({
-          embeds: [
-            errorEmbed(
-              "No tienes suficiente dinero en el banco."
-            )
-          ]
-        });
-      }
-
-      account.bank -=
-        amount;
-
-      account.wallet +=
-        amount;
+    if (user.wallet < amount) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "No tienes suficiente dinero en tu wallet."
+          )
+        ],
+        ephemeral: true
+      });
     }
+
+    user.wallet -= amount;
+    user.bank += amount;
 
     saveData();
 
-    return reply({
+    return interaction.reply({
       embeds: [
         successEmbed(
-          `${E.money} Wallet: **${money(
-            account.wallet
-          )}**\n` +
-          `${E.bank} Banco: **${money(
-            account.bank
-          )}**`
+          `🏦 Depositaste **${amount} Coins Nisk**.\n\n` +
+          `💰 Wallet: **${user.wallet}**\n` +
+          `🏦 Banco: **${user.bank}**`
         )
       ]
     });
   }
 
-  // ---------------------------------------------------
-  // PAY
-  // ---------------------------------------------------
+  // ====================================================
+  // WITH
+  // ====================================================
 
-  if (
-    command === "pay"
-  ) {
+  if (command === "with") {
+    const amount =
+      interaction.options.getInteger("cantidad");
+
+    if (amount <= 0) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "La cantidad debe ser mayor que 0."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    if (user.bank < amount) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "No tienes suficiente dinero en el banco."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    user.bank -= amount;
+    user.wallet += amount;
+
+    saveData();
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `💵 Retiraste **${amount} Coins Nisk**.\n\n` +
+          `💰 Wallet: **${user.wallet}**\n` +
+          `🏦 Banco: **${user.bank}**`
+        )
+      ]
+    });
+  }
+
+  // ====================================================
+  // PAY
+  // ====================================================
+
+  if (command === "pay") {
     const target =
-      getTarget();
+      interaction.options.getUser("usuario");
 
     const amount =
-      getInteger(0);
+      interaction.options.getInteger("cantidad");
 
-    if (
-      !target ||
-      !amount ||
-      amount <= 0
-    ) {
-      return reply({
+    if (target.id === interaction.user.id) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            "Uso: `.pay @usuario cantidad`"
+            "No puedes pagarte a vos mismo."
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    if (
-      target.id ===
-        user.id ||
-      target.bot
-    ) {
-      return reply({
+    if (amount <= 0) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            "No puedes enviar dinero a ese usuario."
+            "La cantidad debe ser mayor que 0."
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    const sender =
-      getUser(
-        user.id
-      );
+    if (user.wallet < amount) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "No tienes suficiente dinero."
+          )
+        ],
+        ephemeral: true
+      });
+    }
 
     const receiver =
-      getUser(
-        target.id
-      );
+      getUser(target.id);
 
-    if (
-      sender.wallet <
-      amount
-    ) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "No tienes suficiente dinero."
-          )
-        ]
-      });
-    }
-
-    sender.wallet -=
-      amount;
-
-    receiver.wallet +=
-      amount;
+    user.wallet -= amount;
+    receiver.wallet += amount;
 
     saveData();
 
-    return reply({
+    return interaction.reply({
       embeds: [
         successEmbed(
-          `Enviaste **${money(
-            amount
-          )}** a ${target}.`
+          `⇄ Enviaste **${amount} Coins Nisk** a ${target}.\n\n` +
+          `💰 Tu wallet: **${user.wallet}**`
         )
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // PROFILE
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "profile"
-  ) {
-    const target =
-      getTarget() ||
-      user;
-
-    const account =
-      getUser(
-        target.id
-      );
-
-    return reply({
+  if (command === "profile") {
+    return interaction.reply({
       embeds: [
-        glassEmbed()
-          .setTitle(
-            `${E.user}  Perfil`
-          )
-          .setThumbnail(
-            target.displayAvatarURL()
-          )
-          .setDescription(
-            `**${target.username}**\n\n` +
-            `${E.money} Wallet: **${money(
-              account.wallet
-            )}**\n` +
-            `${E.bank} Banco: **${money(
-              account.bank
-            )}**\n` +
-            `${E.level} Nivel: **${account.level}**\n` +
-            `XP: **${account.xp}/${account.level * 100}**\n` +
-            `Rank: **#${getLevelRank(
-              target.id
-            )}**\n` +
-            `${E.inventory} Objetos: **${account.inventory.length}**`
-          )
+        glassEmbed({
+          title: `${E.user} Perfil`,
+          description:
+            `👤 Usuario: ${interaction.user}\n\n` +
+            `💰 Coins: **${user.wallet}**\n` +
+            `🏦 Banco: **${user.bank}**\n` +
+            `⭐ XP: **${user.xp}**\n` +
+            `✦ Nivel: **${user.level}**`,
+          color: COLORS.primary
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // INVENTORY
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "inventory"
-  ) {
-    const account =
-      getUser(
-        user.id
-      );
+  if (command === "inventory") {
+    const inventory =
+      user.inventory.length
+        ? user.inventory
+            .map(
+              (item, index) =>
+                `**${index + 1}.** ${item}`
+            )
+            .join("\n")
+        : "◇ Tu inventario está vacío.";
 
-    return reply({
+    return interaction.reply({
       embeds: [
-        glassEmbed()
-          .setTitle(
-            `${E.inventory}  Inventario`
-          )
-          .setDescription(
-            account.inventory.length
-              ? account.inventory
-                  .map(
-                    (
-                      item,
-                      index
-                    ) =>
-                      `**${
-                        index + 1
-                      }.** ${item}`
-                  )
-                  .join("\n")
-              : "Tu inventario está vacío."
-          )
+        glassEmbed({
+          title: `${E.inventory} Inventario`,
+          description: inventory,
+          color: COLORS.primary
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // RANK
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "rank"
-  ) {
-    const account =
-      getUser(
-        user.id
-      );
+  if (command === "rank") {
+    const ranking =
+      getRank(interaction.guild);
 
-    return reply({
+    const position =
+      ranking.findIndex(
+        x => x.id === interaction.user.id
+      ) + 1;
+
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.level
-        )
-          .setTitle(
-            `${E.level}  Rank`
-          )
-          .setDescription(
-            `Nivel **${account.level}**\n\n` +
-            `XP **${account.xp}/${account.level * 100}**\n` +
-            `Rank global **#${getLevelRank(
-              user.id
-            )}**`
-          )
+        glassEmbed({
+          title: `${E.level} Ranking`,
+          description:
+            `👤 ${interaction.user}\n\n` +
+            `🏆 Rank: **#${position || "?"}**\n` +
+            `✦ Nivel: **${user.level}**\n` +
+            `⭐ XP: **${user.xp}**`,
+          color: COLORS.level
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // SHOP
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "shop"
-  ) {
-    return reply({
+  if (command === "shop") {
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.economy
-        )
-          .setTitle(
-            `${E.shop}  Tienda`
-          )
-          .setDescription(
-            data.shop.length
-              ? data.shop
-                  .map(
-                    (
-                      item,
-                      index
-                    ) =>
-                      `**${
-                        index + 1
-                      }. ${item.name}**\n${money(
-                        item.price
-                      )}`
-                  )
-                  .join(
-                    "\n\n"
-                  )
-              : "La tienda está vacía."
-          )
+        glassEmbed({
+          title: `${E.shop} Tienda`,
+          description:
+            "🛒 Actualmente puedes consultar los artículos configurados en la tienda.",
+          color: COLORS.economy
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
-  // BUY
-  // ---------------------------------------------------
-
-  if (
-    command === "buy"
-  ) {
-    const productName =
-      getString();
-
-    const product =
-      data.shop.find(
-        item =>
-          item.name
-            .toLowerCase() ===
-          productName?.toLowerCase()
-      );
-
-    if (!product) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "No encontré ese producto."
-          )
-        ]
-      });
-    }
-
-    const account =
-      getUser(
-        user.id
-      );
-
-    if (
-      account.wallet <
-      product.price
-    ) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "No tienes suficiente dinero."
-          )
-        ]
-      });
-    }
-
-    if (
-      product.type ===
-        "role" &&
-      product.roleId
-    ) {
-      const role =
-        guild.roles.cache.get(
-          product.roleId
-        );
-
-      if (!role) {
-        return reply({
-          embeds: [
-            errorEmbed(
-              "Ese rol ya no existe."
-            )
-          ]
-        });
-      }
-
-      try {
-        await member.roles.add(
-          role
-        );
-      } catch {
-        return reply({
-          embeds: [
-            errorEmbed(
-              "No pude darte ese rol. Revisa la jerarquía de roles del bot."
-            )
-          ]
-        });
-      }
-
-      account.wallet -=
-        product.price;
-    } else {
-      account.wallet -=
-        product.price;
-
-      account.inventory.push(
-        product.name
-      );
-    }
-
-    saveData();
-
-    return reply({
-      embeds: [
-        successEmbed(
-          `Compraste **${product.name}** por **${money(
-            product.price
-          )}**.`
-        )
-      ]
-    });
-  }
-
-  // ---------------------------------------------------
-  // USE
-  // ---------------------------------------------------
-
-  if (
-    command === "use"
-  ) {
-    const itemName =
-      getString();
-
-    const account =
-      getUser(
-        user.id
-      );
-
-    const index =
-      account.inventory
-        .findIndex(
-          item =>
-            String(item)
-              .toLowerCase() ===
-            itemName?.toLowerCase()
-        );
-
-    if (
-      index === -1
-    ) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "No tienes ese objeto."
-          )
-        ]
-      });
-    }
-
-    const item =
-      account.inventory[
-        index
-      ];
-
-    account.inventory.splice(
-      index,
-      1
-    );
-
-    saveData();
-
-    return reply({
-      embeds: [
-        successEmbed(
-          `Usaste **${item}**.`
-        )
-      ]
-    });
-  }
-
-  // ---------------------------------------------------
-  // BALTOP
-  // ---------------------------------------------------
-
-  if (
-    command === "baltop"
-  ) {
-    const top =
-      Object.entries(
-        data.users
-      )
-        .sort(
-          (a, b) =>
-            (
-              (b[1].wallet || 0) +
-              (b[1].bank || 0)
-            ) -
-            (
-              (a[1].wallet || 0) +
-              (a[1].bank || 0)
-            )
-        )
-        .slice(
-          0,
-          10
-        );
-
-    return reply({
-      embeds: [
-        glassEmbed(
-          COLORS.economy
-        )
-          .setTitle(
-            `${E.money}  Balance Top`
-          )
-          .setDescription(
-            top.length
-              ? top
-                  .map(
-                    (
-                      [
-                        id,
-                        account
-                      ],
-                      index
-                    ) =>
-                      `**${
-                        index + 1
-                      }.** <@${id}> • **${money(
-                        (account.wallet || 0) +
-                        (account.bank || 0)
-                      )}**`
-                  )
-                  .join(
-                    "\n"
-                  )
-              : "No hay datos."
-          )
-      ]
-    });
-  }
-
-  // ---------------------------------------------------
-  // LEVELTOP
-  // ---------------------------------------------------
-
-  if (
-    command === "leveltop"
-  ) {
-    const top =
-      Object.entries(
-        data.users
-      )
-        .sort(
-          (a, b) =>
-            (b[1].level || 1) -
-              (a[1].level || 1) ||
-            (b[1].xp || 0) -
-              (a[1].xp || 0)
-        )
-        .slice(
-          0,
-          10
-        );
-
-    return reply({
-      embeds: [
-        glassEmbed(
-          COLORS.level
-        )
-          .setTitle(
-            `${E.level}  Level Top`
-          )
-          .setDescription(
-            top.length
-              ? top
-                  .map(
-                    (
-                      [
-                        id,
-                        account
-                      ],
-                      index
-                    ) =>
-                      `**${
-                        index + 1
-                      }.** <@${id}> • Nivel **${
-                        account.level || 1
-                      }** • XP **${
-                        account.xp || 0
-                      }**`
-                  )
-                  .join(
-                    "\n"
-                  )
-              : "No hay datos."
-          )
-      ]
-    });
-  }
-
-  // ---------------------------------------------------
+  // ====================================================
   // COINFLIP
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "coinflip"
-  ) {
-    return reply({
+  if (command === "coinflip") {
+    const result =
+      Math.random() < 0.5
+        ? "🪙 Cara"
+        : "🪙 Cruz";
+
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            `${E.random}  Coinflip`
-          )
-          .setDescription(
-            Math.random() <
-              0.5
-              ? "**Cara**"
-              : "**Cruz**"
-          )
+        glassEmbed({
+          title: "🪙 Coinflip",
+          description: `Resultado: **${result}**`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // 8BALL
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "8ball"
-  ) {
-    const question =
-      getString();
-
-    if (!question) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "Escribe una pregunta."
-          )
-        ]
-      });
-    }
-
+  if (command === "8ball") {
     const answers = [
       "Sí.",
       "No.",
       "Probablemente.",
+      "No estoy seguro.",
+      "Definitivamente.",
       "Puede ser.",
-      "Todo apunta a que sí.",
-      "No parece.",
-      "Pregunta después.",
-      "Es posible."
+      "Las posibilidades son altas.",
+      "Mejor no contar con ello."
     ];
 
-    return reply({
+    const question =
+      interaction.options.getString(
+        "pregunta"
+      );
+
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            `${E.random}  8Ball`
-          )
-          .setDescription(
-            `**Pregunta**\n${question}\n\n` +
-            `**Respuesta**\n${
-              answers[
-                random(
-                  0,
-                  answers.length - 1
-                )
-              ]
-            }`
-          )
+        glassEmbed({
+          title: "🔮 8Ball",
+          description:
+            `❓ **${question}**\n\n` +
+            `🔮 ${answers[random(0, answers.length - 1)]}`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // RANDOM
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "random"
-  ) {
+  if (command === "random") {
     const min =
-      getInteger(0);
+      interaction.options.getInteger("min");
 
     const max =
-      getInteger(1);
+      interaction.options.getInteger("max");
 
-    if (
-      !Number.isInteger(
-        min
-      ) ||
-      !Number.isInteger(
-        max
-      ) ||
-      min > max
-    ) {
-      return reply({
+    if (min > max) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            "Indica un mínimo y máximo válidos."
+            "El mínimo no puede ser mayor que el máximo."
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    return reply({
+    const result =
+      random(min, max);
+
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            `${E.random}  Random`
-          )
-          .setDescription(
-            `Resultado: **${random(
-              min,
-              max
-            )}**`
-          )
+        glassEmbed({
+          title: `${E.random} Random`,
+          description:
+            `🎲 Resultado: **${result}**`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // DICE
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "dice"
-  ) {
-    return reply({
+  if (command === "dice") {
+    const result = random(1, 6);
+
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            "🎲  Dado"
-          )
-          .setDescription(
-            `Salió **${random(
-              1,
-              6
-            )}**.`
-          )
+        glassEmbed({
+          title: "🎲 Dado",
+          description:
+            `Resultado: **${result}**`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // CHOOSE
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "choose"
-  ) {
-    const choices =
-      String(
-        getString() || ""
-      )
-        .split("|")
-        .map(
-          value =>
-            value.trim()
-        )
+  if (command === "choose") {
+    const raw =
+      interaction.options.getString("opciones");
+
+    const options =
+      raw
+        .split(",")
+        .map(x => x.trim())
         .filter(Boolean);
 
-    if (
-      choices.length < 2
-    ) {
-      return reply({
+    if (options.length < 2) {
+      return interaction.reply({
         embeds: [
           errorEmbed(
-            "Escribe al menos 2 opciones separadas por `|`."
+            "Debes colocar al menos 2 opciones separadas por comas."
           )
-        ]
+        ],
+        ephemeral: true
       });
     }
 
-    if (
-      choices.length > 20
-    ) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "Máximo 20 opciones."
-          )
-        ]
-      });
-    }
+    const choice =
+      options[random(0, options.length - 1)];
 
-    return reply({
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            `${E.random}  Choose`
-          )
-          .setDescription(
-            `Elijo: **${
-              choices[
-                random(
-                  0,
-                  choices.length - 1
-                )
-              ]
-            }**`
-          )
+        glassEmbed({
+          title: "🎯 Choose",
+          description:
+            `La opción elegida es:\n\n` +
+            `> **${choice}**`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // RPS
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "rps"
-  ) {
-    const choice =
-      String(
-        getString() || ""
-      ).toLowerCase();
+  if (command === "rps") {
+    const player =
+      interaction.options.getString("opcion");
 
-    const valid = [
+    const choices = [
       "piedra",
       "papel",
       "tijera"
     ];
 
-    if (
-      !valid.includes(
-        choice
-      )
-    ) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "Elige `piedra`, `papel` o `tijera`."
-          )
-        ]
-      });
-    }
-
-    const botChoice =
-      valid[
-        random(
-          0,
-          valid.length - 1
-        )
-      ];
+    const bot =
+      choices[random(0, 2)];
 
     let result;
 
-    if (
-      choice ===
-      botChoice
-    ) {
-      result =
-        "Empate.";
+    if (player === bot) {
+      result = "🤝 Empate.";
     } else if (
-      (
-        choice ===
-          "piedra" &&
-        botChoice ===
-          "tijera"
-      ) ||
-      (
-        choice ===
-          "papel" &&
-        botChoice ===
-          "piedra"
-      ) ||
-      (
-        choice ===
-          "tijera" &&
-        botChoice ===
-          "papel"
-      )
+      (player === "piedra" && bot === "tijera") ||
+      (player === "papel" && bot === "piedra") ||
+      (player === "tijera" && bot === "papel")
     ) {
-      result =
-        "¡Ganaste!";
+      result = "🏆 Ganaste.";
     } else {
-      result =
-        "Ganó el bot.";
+      result = "💥 Gané yo.";
     }
 
-    return reply({
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            "◆ Piedra, papel o tijera"
-          )
-          .setDescription(
-            `Vos: **${choice}**\n` +
-            `Bot: **${botChoice}**\n\n` +
-            `**${result}**`
-          )
+        glassEmbed({
+          title: "✊ Piedra, Papel o Tijera",
+          description:
+            `👤 Tu elección: **${player}**\n` +
+            `🤖 Mi elección: **${bot}**\n\n` +
+            result,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
+  // LUCK ROYALE
+  // ====================================================
+
+  if (command === "luckroyale") {
+    return startLuckRoyale(interaction);
+  }
+
+  // ====================================================
   // INVITEVER
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "invitever"
-  ) {
-    const target =
-      getTarget() ||
-      user;
+  if (command === "invitever") {
+    const inviteData =
+      data.inviteSystem?.[interaction.guild.id]?.[
+        interaction.user.id
+      ];
 
-    const stats =
-      ensureInviteStats(
-        target.id
-      );
+    const invites =
+      inviteData?.invites || 0;
 
-    const validTotal =
-      Math.max(
-        0,
-        stats.invites -
-          stats.newAccounts -
-          stats.leaves
-      );
-
-    return reply({
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            "🔗・Invitaciones"
-          )
-          .setThumbnail(
-            target.displayAvatarURL()
-          )
-          .setDescription(
-            `${target}\n\n` +
-            `📨 Invites: **${stats.invites}**\n` +
-            `🆕 Cuentas nuevas: **${stats.newAccounts}**\n` +
-            `🚪 Salidas: **${stats.leaves}**\n` +
-            `⭐ Total válido: **${validTotal}**\n\n` +
-            `*Total válido no incluye cuentas nuevas ni usuarios que salieron.*`
-          )
+        glassEmbed({
+          title: "📨 Invitaciones",
+          description:
+            `${interaction.user}\n\n` +
+            `📨 Invitaciones: **${invites}**`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // SUGERENCIA
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "sugerencia"
-  ) {
+  if (command === "sugerencia") {
     const suggestion =
-      getString();
+      interaction.options.getString("texto");
 
-    if (!suggestion) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "Escribe tu sugerencia."
-          )
-        ]
-      });
-    }
-
-    const channelId =
-      data.settings
-        .systemChannels
-        .sugerencias;
-
-    if (!channelId) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "El sistema de sugerencias todavía no está configurado."
-          )
-        ]
-      });
-    }
-
-    const channel =
-      guild.channels.cache.get(
-        channelId
-      );
-
-    if (
-      !channel?.isTextBased()
-    ) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            "El canal de sugerencias configurado ya no existe."
-          )
-        ]
-      });
-    }
-
-    const sent =
-      await channel.send({
-        embeds: [
-          glassEmbed(
-            COLORS.primary
-          )
-            .setTitle(
-              "💡・Nueva Sugerencia"
-            )
-            .setAuthor({
-              name:
-                user.username,
-              iconURL:
-                user.displayAvatarURL()
-            })
-            .setDescription(
-              suggestion
-            )
-            .setTimestamp()
-        ]
-      });
-
-    await sent
-      .react("👍")
-      .catch(() => {});
-
-    await sent
-      .react("👎")
-      .catch(() => {});
-
-    return reply({
+    return interaction.reply({
       embeds: [
-        successEmbed(
-          `Tu sugerencia fue enviada en ${channel}.`
-        )
+        glassEmbed({
+          title: "💡 Sugerencia",
+          description:
+            `${interaction.user}\n\n` +
+            `> ${suggestion}`,
+          color: COLORS.warning
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // PING
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "ping"
-  ) {
-    return reply({
+  if (command === "ping") {
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            `${E.info}  Ping`
-          )
-          .setDescription(
-            `**${client.ws.ping}ms**`
-          )
+        glassEmbed({
+          title: "🏓 Pong",
+          description:
+            `🏓 WebSocket: **${client.ws.ping}ms**`,
+          color: COLORS.success
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
-  // BOTINFO
-  // ---------------------------------------------------
+  // ====================================================
+  // BOT INFO
+  // ====================================================
 
-  if (
-    command === "botinfo"
-  ) {
-    return reply({
+  if (command === "botinfo") {
+    return interaction.reply({
       embeds: [
-        glassEmbed()
-          .setTitle(
-            `${E.info}  LRM Studio`
-          )
-          .setDescription(
-            `Servidores: **${client.guilds.cache.size}**\n` +
-            `Usuarios en caché: **${client.users.cache.size}**\n` +
-            `Prefix: **.** + **/**\n` +
-            `Node: **${process.version}**`
-          )
+        glassEmbed({
+          title: "🤖 LRM Studio",
+          description:
+            "Bot oficial de LRM Studio.\n\n" +
+            `🤖 Servidores: **${client.guilds.cache.size}**\n` +
+            `👥 Usuarios: **${client.users.cache.size}**\n` +
+            `⚙️ Discord.js: **14.x**`,
+          color: COLORS.primary
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
-  // SERVERINFO
-  // ---------------------------------------------------
+  // ====================================================
+  // SERVER INFO
+  // ====================================================
 
-  if (
-    command === "serverinfo"
-  ) {
-    return reply({
+  if (command === "serverinfo") {
+    const guild =
+      interaction.guild;
+
+    return interaction.reply({
       embeds: [
-        glassEmbed()
-          .setTitle(
-            `${E.info}  ${guild.name}`
-          )
-          .setThumbnail(
-            guild.iconURL()
-          )
-          .setDescription(
-            `ID: \`${guild.id}\`\n` +
-            `Miembros: **${guild.memberCount}**\n` +
-            `Canales: **${guild.channels.cache.size}**\n` +
-            `Roles: **${guild.roles.cache.size}**`
-          )
+        glassEmbed({
+          title: "🖥️ Información del servidor",
+          description:
+            `🏠 Nombre: **${guild.name}**\n` +
+            `🆔 ID: \`${guild.id}\`\n` +
+            `👑 Owner: <@${guild.ownerId}>\n` +
+            `👥 Miembros: **${guild.memberCount}**\n` +
+            `📅 Creado: <t:${Math.floor(guild.createdTimestamp / 1000)}:R>`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
-  // MEMBERCOUNT
-  // ---------------------------------------------------
+  // ====================================================
+  // MEMBER COUNT
+  // ====================================================
 
-  if (
-    command === "membercount"
-  ) {
-    return reply({
+  if (command === "membercount") {
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            "○ Miembros"
-          )
-          .setDescription(
-            `Actualmente somos **${guild.memberCount} miembros** en **${guild.name}**.`
-          )
+        glassEmbed({
+          title: "👥 Miembros",
+          description:
+            `LRM Studio tiene actualmente **${interaction.guild.memberCount} miembros**.`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // UPTIME
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "uptime"
-  ) {
+  if (command === "uptime") {
     const seconds =
-      Math.floor(
-        process.uptime()
-      );
+      Math.floor(client.uptime / 1000);
 
     const days =
-      Math.floor(
-        seconds / 86400
-      );
+      Math.floor(seconds / 86400);
 
     const hours =
-      Math.floor(
-        (seconds % 86400) /
-        3600
-      );
+      Math.floor((seconds % 86400) / 3600);
 
     const minutes =
-      Math.floor(
-        (seconds % 3600) /
-        60
-      );
+      Math.floor((seconds % 3600) / 60);
 
-    return reply({
+    const secs =
+      seconds % 60;
+
+    return interaction.reply({
       embeds: [
-        glassEmbed(
-          COLORS.info
-        )
-          .setTitle(
-            `${E.time}  Uptime`
-          )
-          .setDescription(
-            `**${days}d ${hours}h ${minutes}m**`
-          )
+        glassEmbed({
+          title: "⏱️ Uptime",
+          description:
+            `🟢 Activo durante:\n\n` +
+            `**${days}d ${hours}h ${minutes}m ${secs}s**`,
+          color: COLORS.success
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
-  // USERINFO
-  // ---------------------------------------------------
+  // ====================================================
+  // USER INFO
+  // ====================================================
 
-  if (
-    command === "userinfo"
-  ) {
+  if (command === "userinfo") {
     const target =
-      getTarget() ||
-      user;
+      interaction.options.getUser("usuario") ||
+      interaction.user;
 
-    return reply({
+    return interaction.reply({
       embeds: [
-        glassEmbed()
-          .setTitle(
-            `${E.user}  ${target.username}`
-          )
-          .setThumbnail(
-            target.displayAvatarURL()
-          )
-          .setDescription(
-            `Usuario: ${target}\n` +
-            `ID: \`${target.id}\`\n` +
-            `Cuenta creada: <t:${Math.floor(
-              target.createdTimestamp /
-                1000
-            )}:R>`
-          )
+        glassEmbed({
+          title: "👤 User Info",
+          description:
+            `👤 Usuario: ${target}\n` +
+            `🏷️ Tag: **${target.tag}**\n` +
+            `🆔 ID: \`${target.id}\`\n` +
+            `🤖 Bot: **${target.bot ? "Sí" : "No"}**\n` +
+            `📅 Cuenta creada: <t:${Math.floor(target.createdTimestamp / 1000)}:R>`,
+          color: COLORS.info
+        })
       ]
     });
   }
 
-  // ---------------------------------------------------
+  // ====================================================
   // AVATAR
-  // ---------------------------------------------------
+  // ====================================================
 
-  if (
-    command === "avatar"
-  ) {
+  if (command === "avatar") {
     const target =
-      getTarget() ||
-      user;
+      interaction.options.getUser("usuario") ||
+      interaction.user;
 
-    return reply({
+    return interaction.reply({
       embeds: [
-        glassEmbed()
-          .setTitle(
-            `${E.user}  Avatar`
-          )
-          .setImage(
-            target.displayAvatarURL({
-              size: 1024
-            })
-          )
+        glassEmbed({
+          title: "🖼️ Avatar",
+          description:
+            `[Abrir avatar completo](${target.displayAvatarURL({
+              size: 4096,
+              extension: "png"
+            })})`,
+          color: COLORS.info
+        }).setImage(
+          target.displayAvatarURL({
+            size: 1024,
+            extension: "png"
+          })
+        )
       ]
     });
   }
 
-  return false;
+  // ====================================================
+  // COMANDO DESCONOCIDO
+  // ====================================================
+
+  return interaction.reply({
+    embeds: [
+      errorEmbed(
+        "No pude encontrar ese comando."
+      )
+    ],
+    ephemeral: true
+  });
 }
 
-// =====================================================
+// ======================================================
 // INTERACTIONS
-// =====================================================
+// ======================================================
 
 client.on(
   "interactionCreate",
   async interaction => {
+
     try {
 
-      // -------------------------------------------------
-      // BOTONES
-      // -------------------------------------------------
+      // ================================================
+      // BOTONES LUCK ROYALE
+      // ================================================
 
-      if (
-        interaction.isButton()
-      ) {
+      if (interaction.isButton()) {
 
         if (
-          interaction.customId.startsWith(
-            "royale_reject:"
-          )
+          interaction.customId === "luck_reject"
         ) {
-          const ownerId =
-            interaction.customId.split(
-              ":"
-            )[1];
-
-          if (
-            interaction.user.id !==
-            ownerId
-          ) {
-            return interaction.reply({
-              embeds: [
-                errorEmbed(
-                  "Este Luck Royale no es tuyo."
-                )
-              ],
-              flags: 64
-            });
-          }
-
           return interaction.update({
             embeds: [
-              glassEmbed(
-                COLORS.warning
-              )
-                .setTitle(
-                  `${E.royale}  Luck Royale`
-                )
-                .setDescription(
-                  "Tirada cancelada."
-                )
+              glassEmbed({
+                title: "✕ Luck Royale",
+                description:
+                  "Has cancelado la partida.",
+                color: COLORS.error
+              })
             ],
             components: []
           });
         }
 
         if (
-          interaction.customId.startsWith(
-            "royale_accept:"
-          )
+          interaction.customId === "luck_accept"
         ) {
-          const ownerId =
-            interaction.customId.split(
-              ":"
-            )[1];
-
-          if (
-            interaction.user.id !==
-            ownerId
-          ) {
-            return interaction.reply({
-              embeds: [
-                errorEmbed(
-                  "Este Luck Royale no es tuyo."
-                )
-              ],
-              flags: 64
-            });
-          }
-
-          return startRoyale(
+          return runLuckRoyale(
             interaction
           );
         }
-
-        return;
       }
 
-      // -------------------------------------------------
-      // SLASH
-      // -------------------------------------------------
+      // ================================================
+      // MENÚ UTILIDADES
+      // ================================================
 
       if (
-        !interaction.isChatInputCommand()
+        interaction.isStringSelectMenu() &&
+        interaction.customId ===
+          "lrm_utilities_menu"
       ) {
-        return;
-      }
 
-      const exists =
-        userCommands.some(
-          command =>
-            command.name ===
-            interaction.commandName
-        );
+        const value =
+          interaction.values[0];
 
-      if (!exists) {
-        return;
-      }
-
-      const command =
-        interaction.commandName;
-
-      const target =
-        interaction.options.getUser(
-          "usuario"
-        );
-
-      let integerValues =
-        [];
-
-      if (
-        command === "dep" ||
-        command === "with" ||
-        command === "pay"
-      ) {
-        integerValues = [
-          interaction.options.getInteger(
-            "cantidad"
-          )
-        ];
-      }
-
-      if (
-        command === "random"
-      ) {
-        integerValues = [
-          interaction.options.getInteger(
-            "min"
-          ),
-          interaction.options.getInteger(
-            "max"
-          )
-        ];
-      }
-
-      let stringValue =
-        null;
-
-      if (
-        command === "buy"
-      ) {
-        stringValue =
-          interaction.options.getString(
-            "producto"
-          );
-      }
-
-      if (
-        command === "use"
-      ) {
-        stringValue =
-          interaction.options.getString(
-            "objeto"
-          );
-      }
-
-      if (
-        command === "8ball"
-      ) {
-        stringValue =
-          interaction.options.getString(
-            "pregunta"
-          );
-      }
-
-      if (
-        command === "choose"
-      ) {
-        stringValue =
-          interaction.options.getString(
-            "opciones"
-          );
-      }
-
-      if (
-        command === "rps"
-      ) {
-        stringValue =
-          interaction.options.getString(
-            "eleccion"
-          );
-      }
-
-      if (
-        command === "sugerencia"
-      ) {
-        stringValue =
-          interaction.options.getString(
-            "mensaje"
-          );
-      }
-
-      await executeUserCommand({
-        command,
-        user:
-          interaction.user,
-        guild:
-          interaction.guild,
-        member:
-          interaction.member,
-
-        getTarget:
-          () => target,
-
-        getInteger:
-          index =>
-            integerValues[
-              index
+        if (value === "ping") {
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "🏓 Ping",
+                description:
+                  `WebSocket: **${client.ws.ping}ms**`,
+                color: COLORS.success
+              }),
             ],
+            ephemeral: true
+          });
+        }
 
-        getString:
-          () =>
-            stringValue,
+        if (value === "botinfo") {
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "🤖 Bot Info",
+                description:
+                  `🤖 Servidores: **${client.guilds.cache.size}**\n` +
+                  `👥 Usuarios: **${client.users.cache.size}**`,
+                color: COLORS.primary
+              })
+            ],
+            ephemeral: true
+          });
+        }
 
-        reply:
-          payload =>
-            interaction.reply(
-              payload
-            )
-      });
+        if (value === "serverinfo") {
+          const guild =
+            interaction.guild;
+
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "🖥️ Server Info",
+                description:
+                  `🏠 **${guild.name}**\n` +
+                  `👥 Miembros: **${guild.memberCount}**\n` +
+                  `🆔 \`${guild.id}\``,
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "membercount") {
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "👥 Miembros",
+                description:
+                  `Este servidor tiene **${interaction.guild.memberCount} miembros**.`,
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "uptime") {
+          const seconds =
+            Math.floor(client.uptime / 1000);
+
+          const days =
+            Math.floor(seconds / 86400);
+
+          const hours =
+            Math.floor(
+              (seconds % 86400) / 3600
+            );
+
+          const minutes =
+            Math.floor(
+              (seconds % 3600) / 60
+            );
+
+          const secs =
+            seconds % 60;
+
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "⏱️ Uptime",
+                description:
+                  `🟢 **${days}d ${hours}h ${minutes}m ${secs}s**`,
+                color: COLORS.success
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "userinfo") {
+          const target =
+            interaction.user;
+
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "👤 User Info",
+                description:
+                  `👤 ${target}\n` +
+                  `🏷️ ${target.tag}\n` +
+                  `🆔 \`${target.id}\`\n` +
+                  `🤖 Bot: **${target.bot ? "Sí" : "No"}**`,
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "avatar") {
+          const avatar =
+            interaction.user.displayAvatarURL({
+              size: 1024,
+              extension: "png"
+            });
+
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "🖼️ Avatar",
+                description:
+                  `[Abrir avatar completo](${avatar})`,
+                color: COLORS.info
+              }).setImage(avatar)
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "invitever") {
+          const inviteData =
+            data.inviteSystem?.[
+              interaction.guild.id
+            ]?.[interaction.user.id];
+
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "📨 Invitaciones",
+                description:
+                  `Has realizado **${inviteData?.invites || 0} invitaciones**.`,
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "random") {
+          const result =
+            random(1, 100);
+
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "🎲 Random",
+                description:
+                  `Tu número aleatorio es **${result}**.`,
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "dice") {
+          const result =
+            random(1, 6);
+
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "🎲 Dado",
+                description:
+                  `🎲 Sacaste un **${result}**.`,
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "choose") {
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "🎯 Choose",
+                description:
+                  "Usa `/choose` y escribe las opciones separadas por comas.\n\n" +
+                  "Ejemplo: `/choose opciones: Pizza, Hamburguesa, Pasta`",
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "rps") {
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "✊ Piedra, Papel o Tijera",
+                description:
+                  "Usa `/rps` para jugar contra el bot.",
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+
+        if (value === "8ball") {
+          return interaction.reply({
+            embeds: [
+              glassEmbed({
+                title: "🔮 8Ball",
+                description:
+                  "Usa `/8ball` y escribe tu pregunta.",
+                color: COLORS.info
+              })
+            ],
+            ephemeral: true
+          });
+        }
+      }
+
+      // ================================================
+      // SLASH COMMANDS
+      // ================================================
+
+      if (
+        interaction.isChatInputCommand()
+      ) {
+        return executeUserCommand(
+          interaction
+        );
+      }
 
     } catch (error) {
 
       console.error(
-        "Interaction error:",
+        "Error en interactionCreate:",
         error
       );
 
       if (
-        interaction.isRepliable() &&
-        !interaction.replied &&
-        !interaction.deferred
+        interaction.replied ||
+        interaction.deferred
       ) {
-        await interaction
-          .reply({
-            embeds: [
-              errorEmbed(
-                "Ocurrió un error ejecutando el comando."
-              )
-            ],
-            flags: 64
-          })
-          .catch(
-            () => {}
-          );
+        return interaction.followUp({
+          embeds: [
+            errorEmbed(
+              "Ocurrió un error ejecutando esta interacción."
+            )
+          ],
+          ephemeral: true
+        }).catch(() => {});
       }
+
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "Ocurrió un error ejecutando esta interacción."
+          )
+        ],
+        ephemeral: true
+      }).catch(() => {});
     }
   }
 );
 
-// =====================================================
+// ======================================================
 // MESSAGE CREATE
-// =====================================================
+// ======================================================
 
 client.on(
   "messageCreate",
   async message => {
-    try {
 
-      if (
-        message.author.bot ||
-        !message.guild
-      ) {
-        return;
-      }
+    if (
+      message.author.bot ||
+      !message.guild
+    ) {
+      return;
+    }
 
-      // -----------------------------------------------
-      // ALIANZAS
-      // -----------------------------------------------
+    const content =
+      message.content.trim();
 
-      if (
-        message.channel.id ===
-        data.settings
-          .systemChannels
-          .alianzas
-      ) {
-        await processPartnerInvite(
-          message,
-          "alianza"
-        );
-      }
+    // ================================================
+    // PREFIX
+    // ================================================
 
-      // -----------------------------------------------
-      // AFFYS
-      // -----------------------------------------------
-
-      if (
-        message.channel.id ===
-        data.settings
-          .systemChannels
-          .affys
-      ) {
-        await processPartnerInvite(
-          message,
-          "affy"
-        );
-      }
-
-      // -----------------------------------------------
-      // PREFIX
-      // -----------------------------------------------
-
-      if (
-        !message.content.startsWith(
-          PREFIX
-        )
-      ) {
-        return;
-      }
-
+    if (
+      content.startsWith(PREFIX)
+    ) {
       const args =
-        message.content
-          .slice(
-            PREFIX.length
-          )
+        content
+          .slice(PREFIX.length)
           .trim()
           .split(/\s+/);
 
       const command =
-        args.shift()
-          ?.toLowerCase();
+        args.shift()?.toLowerCase();
 
-      const valid =
-        userCommands.some(
-          cmd =>
-            cmd.name ===
-            command
+      if (command === "help") {
+        return message.reply({
+          embeds: [
+            glassEmbed({
+              title: "📚 LRM Studio",
+              description:
+                "Usa `/help` para ver los comandos disponibles.\n\n" +
+                "También puedes usar `/utilidades` para abrir el menú de utilidades.",
+              color: COLORS.primary
+            })
+          ]
+        });
+      }
+
+      if (command === "utilidades") {
+        return message.reply({
+          embeds: [
+            utilitiesEmbed()
+          ],
+          components: [
+            utilitiesMenu()
+          ]
+        });
+      }
+
+      if (command === "balance") {
+        const user =
+          getUser(message.author.id);
+
+        return message.reply({
+          embeds: [
+            glassEmbed({
+              title: `${E.money} Balance`,
+              description:
+                `💰 Wallet: **${user.wallet}**\n` +
+                `🏦 Banco: **${user.bank}**\n\n` +
+                `💵 Total: **${user.wallet + user.bank}**`,
+              color: COLORS.economy
+            })
+          ]
+        });
+      }
+
+      if (command === "ping") {
+        return message.reply({
+          embeds: [
+            glassEmbed({
+              title: "🏓 Pong",
+              description:
+                `WebSocket: **${client.ws.ping}ms**`,
+              color: COLORS.success
+            })
+          ]
+        });
+      }
+
+      if (command === "luckroyale") {
+        const fakeInteraction = {
+          user: message.author,
+          guild: message.guild,
+          reply: options =>
+            message.reply(options)
+        };
+
+        return startLuckRoyale(
+          fakeInteraction
         );
+      }
+    }
 
-      if (!valid) {
+    // ================================================
+    // XP POR MENSAJE
+    // ================================================
+
+    const user =
+      getUser(message.author.id);
+
+    const result =
+      addXP(
+        message.author.id,
+        random(3, 8),
+        message.guild
+      );
+
+    if (result.leveledUp) {
+
+      const ranking =
+        getRank(message.guild);
+
+      const rank =
+        ranking.findIndex(
+          x =>
+            x.id ===
+            message.author.id
+        ) + 1;
+
+      const levelMessage =
+        LEVEL_TEMPLATE
+          .replace(
+            "$(user.mention)",
+            `${message.author}`
+          )
+          .replace(
+            "$(level)",
+            String(result.level)
+          )
+          .replace(
+            "$(xp)",
+            String(user.xp)
+          )
+          .replace(
+            "$(rank)",
+            String(rank)
+          );
+
+      const channelId =
+        data.settings
+          ?.systemChannels
+          ?.level?.[
+            message.guild.id
+          ];
+
+      const channel =
+        channelId
+          ? message.guild.channels.cache.get(
+              channelId
+            )
+          : message.channel;
+
+      if (channel) {
+        await channel.send({
+          content: levelMessage
+        }).catch(() => {});
+      }
+    }
+
+    // ================================================
+    // INVITACIONES / ALIANZAS / AFFYS
+    // ================================================
+
+    const inviteMatch =
+      content.match(
+        /https?:\/\/(?:www\.)?(?:discord\.gg|discord\.com\/invite)\/([a-zA-Z0-9-]+)/i
+      );
+
+    if (!inviteMatch) {
+      return;
+    }
+
+    const code =
+      inviteMatch[1];
+
+    try {
+
+      const invite =
+        await client.fetchInvite(code);
+
+      if (!invite.guild) {
         return;
       }
 
-      const target =
-        message.mentions.users.first();
+      const inviter =
+        message.author;
 
-      let values =
-        [...args];
+      const guildId =
+        message.guild.id;
 
-      // -------------------------------------------------
-      // CORRECCIÓN IMPORTANTE
-      // -------------------------------------------------
+      data.inviteSystem[guildId] ??= {};
+      data.inviteSystem[guildId][
+        inviter.id
+      ] ??= {
+        invites: 0
+      };
 
-      if (
-        target &&
-        values[0]?.includes(
-          target.id
-        )
-      ) {
-        values.shift();
-      }
+      data.inviteSystem[guildId][
+        inviter.id
+      ].invites++;
 
-      const stringArgs =
-        [...values];
+      data.partners[guildId] ??= {};
+      data.partners[guildId][
+        invite.guild.id
+      ] ??= {
+        points: 0,
+        invites: 0,
+        name: invite.guild.name
+      };
 
-      await executeUserCommand({
-        command,
+      data.partners[guildId][
+        invite.guild.id
+      ].points++;
 
-        user:
-          message.author,
+      data.partners[guildId][
+        invite.guild.id
+      ].invites++;
 
-        guild:
-          message.guild,
+      saveData();
 
-        member:
-          message.member,
+      const partner =
+        data.partners[guildId][
+          invite.guild.id
+        ];
 
-        getTarget:
-          () => target,
+      const rank =
+        getPartnerRank(
+          guildId,
+          partner.points
+        );
 
-        getInteger:
-          index => {
-            const value =
-              Number(
-                values[index]
-              );
+      const allianceText =
+        ALLIANCE_TEMPLATE
+          .replace(
+            "$(invite.guild.name)",
+            invite.guild.name
+          )
+          .replace(
+            "$(user.mention)",
+            `${inviter}`
+          )
+          .replace(
+            "$(partner.rank)",
+            String(rank)
+          )
+          .replace(
+            "$(partner.points)",
+            String(partner.points)
+          );
 
-            return Number.isInteger(
-              value
-            )
-              ? value
-              : null;
-          },
-
-        getString:
-          () =>
-            stringArgs.join(
-              " "
-            ),
-
-        reply:
-          payload =>
-            message.reply(
-              payload
-            )
-      });
-
-    } catch (error) {
-
-      console.error(
-        "User prefix error:",
-        error
+      await logAction(
+        message.guild,
+        "alliance",
+        "🤝 Nueva alianza",
+        allianceText,
+        COLORS.success
       );
+
+    } catch {
+      // Invitación inválida o no disponible.
     }
   }
 );
 
-// =====================================================
+// ======================================================
 // READY
-// =====================================================
+// ======================================================
 
-// Discord.js 14/15 compatible
 client.once(
   "clientReady",
   async () => {
 
     console.log(
-      `✓ ${client.user.tag} conectado.`
+      `✅ ${client.user.tag} está conectado.`
     );
 
-    client.user.setActivity(
-      "LRM Studio • .help"
+    console.log(
+      `🌐 Servidores: ${client.guilds.cache.size}`
     );
+
+    console.log(
+      `🏓 Ping: ${client.ws.ping}ms`
+    );
+
+    // ================================================
+    // REGISTRAR SLASH COMMANDS
+    // ================================================
+
+    try {
+
+      const rest =
+        new REST({
+          version: "10"
+        }).setToken(TOKEN);
+
+      await rest.put(
+        Routes.applicationCommands(
+          CLIENT_ID
+        ),
+        {
+          body: commands
+        }
+      );
+
+      console.log(
+        `✅ ${commands.length} comandos registrados.`
+      );
+
+    } catch (error) {
+
+      console.error(
+        "❌ Error registrando comandos:",
+        error
+      );
+    }
+
+    // ================================================
+    // CACHE DE INVITACIONES
+    // ================================================
 
     for (
       const guild
       of client.guilds.cache.values()
     ) {
-      await cacheGuildInvites(
+      await cacheInvites(
         guild
       );
     }
 
-    console.log(
-      "✓ Caché de invitaciones cargada."
-    );
+    // ================================================
+    // PRESENCIA
+    // ================================================
+
+    client.user.setPresence({
+      activities: [
+        {
+          name: "LRM Studio 💜",
+          type: 3
+        }
+      ],
+      status: "online"
+    });
   }
 );
 
-// =====================================================
-// NUEVOS SERVIDORES
-// =====================================================
+// ======================================================
+// NUEVO SERVIDOR
+// ======================================================
 
 client.on(
   "guildCreate",
   async guild => {
-    await cacheGuildInvites(
+
+    console.log(
+      `➕ Unido a: ${guild.name}`
+    );
+
+    await cacheInvites(
       guild
     );
+
+    saveData();
   }
 );
 
-// =====================================================
+// ======================================================
 // ERRORES
-// =====================================================
+// ======================================================
 
 process.on(
   "unhandledRejection",
   error => {
     console.error(
-      "Unhandled Rejection:",
+      "❌ Unhandled Rejection:",
       error
     );
   }
@@ -3964,18 +2800,30 @@ process.on(
   "uncaughtException",
   error => {
     console.error(
-      "Uncaught Exception:",
+      "❌ Uncaught Exception:",
       error
     );
   }
 );
 
-// =====================================================
-// INICIO
-// =====================================================
+// ======================================================
+// LOGIN
+// ======================================================
 
-registerCommands();
+if (!TOKEN) {
+  console.error(
+    "❌ Falta DISCORD_TOKEN en las variables de entorno."
+  );
 
-client.login(
-  TOKEN
-);
+  process.exit(1);
+}
+
+if (!CLIENT_ID) {
+  console.error(
+    "❌ Falta CLIENT_ID en las variables de entorno."
+  );
+
+  process.exit(1);
+}
+
+client.login(TOKEN);
