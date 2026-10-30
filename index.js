@@ -6,9 +6,7 @@ const {
   StringSelectMenuBuilder,
   SlashCommandBuilder,
   REST,
-  Routes,
-  PermissionFlagsBits,
-  ChannelType
+  Routes
 } = require("discord.js");
 
 const fs = require("fs");
@@ -126,19 +124,22 @@ function getEmoji(key) {
     return "";
   }
 
-  // Si Discord tiene el emoji en caché,
-  // usamos el objeto real.
-  const cached =
-    client.emojis.cache.get(emoji.id);
+  // Primero intentamos obtener el emoji real
+  // desde la caché de Discord.
+  const cached = client.emojis.cache.get(
+    emoji.id
+  );
 
   if (cached) {
     return cached.toString();
   }
 
-  // Fallback directo mediante ID.
-  return emoji.animated
-    ? `<a:${emoji.name}:${emoji.id}>`
-    : `<:${emoji.name}:${emoji.id}>`;
+  // Fallback directo utilizando el ID.
+  if (emoji.animated) {
+    return `<a:${emoji.name}:${emoji.id}>`;
+  }
+
+  return `<:${emoji.name}:${emoji.id}>`;
 }
 
 const E = new Proxy(
@@ -187,14 +188,12 @@ function loadData() {
   }
 
   try {
-    const raw =
-      fs.readFileSync(
-        DATA_FILE,
-        "utf8"
-      );
+    const raw = fs.readFileSync(
+      DATA_FILE,
+      "utf8"
+    );
 
-    const parsed =
-      JSON.parse(raw);
+    const parsed = JSON.parse(raw);
 
     parsed.users ??= {};
     parsed.shop ??= [];
@@ -208,7 +207,6 @@ function loadData() {
     parsed.settings.logs.admin ??= null;
 
     return parsed;
-
   } catch (error) {
     console.error(
       "Error leyendo data.json:",
@@ -313,10 +311,7 @@ function truncate(text, max = 1000) {
     return text;
   }
 
-  return (
-    text.slice(0, max - 3) +
-    "..."
-  );
+  return text.slice(0, max - 3) + "...";
 }
 
 async function sendLog(
@@ -335,18 +330,14 @@ async function sendLog(
   }
 
   const logs = getLogs();
-
-  const channelId =
-    logs[type];
+  const channelId = logs[type];
 
   if (!channelId) {
     return;
   }
 
   const channel =
-    guild.channels.cache.get(
-      channelId
-    );
+    guild.channels.cache.get(channelId);
 
   if (
     !channel ||
@@ -397,17 +388,6 @@ async function sendLog(
       error
     );
   }
-}
-
-async function sendAllLogs(
-  guild,
-  options
-) {
-  await sendLog(
-    guild,
-    "general",
-    options
-  );
 }
 
 function logAction(
@@ -467,16 +447,12 @@ function formatTime(ms) {
     Math.ceil(ms / 1000);
 
   const hours =
-    Math.floor(
-      seconds / 3600
-    );
+    Math.floor(seconds / 3600);
 
   seconds %= 3600;
 
   const minutes =
-    Math.floor(
-      seconds / 60
-    );
+    Math.floor(seconds / 60);
 
   seconds %= 60;
 
@@ -517,11 +493,9 @@ function cooldownEmbed(ms) {
 // =====================================================
 
 function addXP(id) {
-  const user =
-    getUser(id);
+  const user = getUser(id);
 
-  const gained =
-    random(3, 8);
+  const gained = random(3, 8);
 
   user.xp += gained;
 
@@ -530,9 +504,7 @@ function addXP(id) {
 
   let levelUp = false;
 
-  if (
-    user.xp >= required
-  ) {
+  if (user.xp >= required) {
     user.xp -= required;
     user.level++;
     levelUp = true;
@@ -845,7 +817,6 @@ async function registerCommands() {
     console.log(
       `Comandos registrados: ${commands.length}`
     );
-
   } catch (error) {
     console.error(
       "Error registrando comandos:",
@@ -927,7 +898,7 @@ client.once(
 );
 
 // =====================================================
-// LOGS AUTOMÁTICOS DEL SERVIDOR
+// LOGS AUTOMÁTICOS
 // =====================================================
 
 // MENSAJE ELIMINADO
@@ -962,7 +933,10 @@ client.on(
 // MENSAJE EDITADO
 client.on(
   "messageUpdate",
-  async (oldMessage, newMessage) => {
+  async (
+    oldMessage,
+    newMessage
+  ) => {
     if (!newMessage.guild) return;
     if (newMessage.author?.bot) return;
 
@@ -1079,7 +1053,10 @@ client.on(
 // ROL MODIFICADO
 client.on(
   "roleUpdate",
-  (oldRole, newRole) => {
+  (
+    oldRole,
+    newRole
+  ) => {
     const changes = [];
 
     if (
@@ -1174,7 +1151,10 @@ client.on(
 // CANAL MODIFICADO
 client.on(
   "channelUpdate",
-  (oldChannel, newChannel) => {
+  (
+    oldChannel,
+    newChannel
+  ) => {
     if (!newChannel.guild) {
       return;
     }
@@ -1230,7 +1210,10 @@ client.on(
 // SERVIDOR MODIFICADO
 client.on(
   "guildUpdate",
-  (oldGuild, newGuild) => {
+  (
+    oldGuild,
+    newGuild
+  ) => {
     const changes = [];
 
     if (
@@ -1314,9 +1297,9 @@ client.on(
       return;
     }
 
-    // ===============================================
+    // =================================================
     // .help
-    // ===============================================
+    // =================================================
 
     if (
       command === "help"
@@ -1431,8 +1414,6 @@ client.on(
         ]
       });
     }
-
-    // .setlog y .logs están en admin.js
   }
 );
 
@@ -1444,9 +1425,9 @@ client.on(
   "interactionCreate",
   async interaction => {
 
-    // ===============================================
+    // =================================================
     // AUTOCOMPLETE
-    // ===============================================
+    // =================================================
 
     if (
       interaction.isAutocomplete()
@@ -1483,9 +1464,9 @@ client.on(
       return;
     }
 
-    // ===============================================
+    // =================================================
     // HELP MENU
-    // ===============================================
+    // =================================================
 
     if (
       interaction.isStringSelectMenu() &&
@@ -1579,8 +1560,7 @@ client.on(
       }
 
       if (
-        category ===
-        "informacion"
+        category === "informacion"
       ) {
         embed
           .setTitle(
@@ -1609,9 +1589,9 @@ client.on(
     const command =
       interaction.commandName;
 
-    // ===============================================
+    // =================================================
     // BALANCE
-    // ===============================================
+    // =================================================
 
     if (
       command === "balance"
@@ -1666,9 +1646,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // WORK
-    // ===============================================
+    // =================================================
 
     if (
       command === "work"
@@ -1688,9 +1668,7 @@ client.on(
       if (cooldown) {
         return interaction.reply({
           embeds: [
-            cooldownEmbed(
-              cooldown
-            )
+            cooldownEmbed(cooldown)
           ],
           ephemeral: true
         });
@@ -1754,9 +1732,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // RISK
-    // ===============================================
+    // =================================================
 
     if (
       command === "risk"
@@ -1776,9 +1754,7 @@ client.on(
       if (cooldown) {
         return interaction.reply({
           embeds: [
-            cooldownEmbed(
-              cooldown
-            )
+            cooldownEmbed(cooldown)
           ],
           ephemeral: true
         });
@@ -1882,9 +1858,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // CRIME
-    // ===============================================
+    // =================================================
 
     if (
       command === "crime"
@@ -1904,9 +1880,7 @@ client.on(
       if (cooldown) {
         return interaction.reply({
           embeds: [
-            cooldownEmbed(
-              cooldown
-            )
+            cooldownEmbed(cooldown)
           ],
           ephemeral: true
         });
@@ -2009,9 +1983,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // DAILY
-    // ===============================================
+    // =================================================
 
     if (
       command === "daily"
@@ -2031,9 +2005,7 @@ client.on(
       if (cooldown) {
         return interaction.reply({
           embeds: [
-            cooldownEmbed(
-              cooldown
-            )
+            cooldownEmbed(cooldown)
           ],
           ephemeral: true
         });
@@ -2072,9 +2044,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // DEP
-    // ===============================================
+    // =================================================
 
     if (
       command === "dep"
@@ -2086,9 +2058,7 @@ client.on(
 
       const input =
         interaction.options
-          .getString(
-            "cantidad"
-          )
+          .getString("cantidad")
           .trim()
           .toLowerCase();
 
@@ -2164,9 +2134,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // WITH
-    // ===============================================
+    // =================================================
 
     if (
       command === "with"
@@ -2178,9 +2148,7 @@ client.on(
 
       const input =
         interaction.options
-          .getString(
-            "cantidad"
-          )
+          .getString("cantidad")
           .trim()
           .toLowerCase();
 
@@ -2245,9 +2213,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // PAY
-    // ===============================================
+    // =================================================
 
     if (
       command === "pay"
@@ -2338,9 +2306,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // PROFILE
-    // ===============================================
+    // =================================================
 
     if (
       command === "profile"
@@ -2416,9 +2384,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // INVENTORY
-    // ===============================================
+    // =================================================
 
     if (
       command === "inventory"
@@ -2469,9 +2437,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // RANK
-    // ===============================================
+    // =================================================
 
     if (
       command === "rank"
@@ -2496,9 +2464,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // SHOP
-    // ===============================================
+    // =================================================
 
     if (
       command === "shop"
@@ -2525,8 +2493,7 @@ client.on(
           .map(
             (product, index) => {
               const type =
-                product.type ===
-                "role"
+                product.type === "role"
                   ? "Rol"
                   : "Ítem";
 
@@ -2546,16 +2513,14 @@ client.on(
             .setTitle(
               `${E.dinero} LRM Shop`
             )
-            .setDescription(
-              products
-            )
+            .setDescription(products)
         ]
       });
     }
 
-    // ===============================================
+    // =================================================
     // BUY
-    // ===============================================
+    // =================================================
 
     if (
       command === "buy"
@@ -2722,9 +2687,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // USE
-    // ===============================================
+    // =================================================
 
     if (
       command === "use"
@@ -2787,17 +2752,15 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // BALTOP
-    // ===============================================
+    // =================================================
 
     if (
       command === "baltop"
     ) {
       const ranking =
-        Object.entries(
-          data.users
-        )
+        Object.entries(data.users)
           .map(
             ([id, user]) => ({
               id,
@@ -2842,17 +2805,15 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // LEVELTOP
-    // ===============================================
+    // =================================================
 
     if (
       command === "leveltop"
     ) {
       const ranking =
-        Object.entries(
-          data.users
-        )
+        Object.entries(data.users)
           .sort(
             ([, a], [, b]) => {
               if (
@@ -2865,10 +2826,7 @@ client.on(
                 );
               }
 
-              return (
-                b.xp -
-                a.xp
-              );
+              return b.xp - a.xp;
             }
           )
           .slice(0, 10);
@@ -2902,9 +2860,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // COINFLIP
-    // ===============================================
+    // =================================================
 
     if (
       command === "coinflip"
@@ -2928,9 +2886,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // 8BALL
-    // ===============================================
+    // =================================================
 
     if (
       command === "8ball"
@@ -2985,9 +2943,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // RANDOM
-    // ===============================================
+    // =================================================
 
     if (
       command === "random"
@@ -3033,9 +2991,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // PING
-    // ===============================================
+    // =================================================
 
     if (
       command === "ping"
@@ -3054,9 +3012,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // BOTINFO
-    // ===============================================
+    // =================================================
 
     if (
       command === "botinfo"
@@ -3084,9 +3042,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // SERVERINFO
-    // ===============================================
+    // =================================================
 
     if (
       command === "serverinfo"
@@ -3138,9 +3096,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // USERINFO
-    // ===============================================
+    // =================================================
 
     if (
       command === "userinfo"
@@ -3159,15 +3117,13 @@ client.on(
       const joined =
         member?.joinedTimestamp
           ? `<t:${Math.floor(
-              member.joinedTimestamp /
-                1000
+              member.joinedTimestamp / 1000
             )}:R>`
           : "Desconocido";
 
       const created =
         `<t:${Math.floor(
-          target.createdTimestamp /
-            1000
+          target.createdTimestamp / 1000
         )}:R>`;
 
       return interaction.reply({
@@ -3212,9 +3168,9 @@ client.on(
       });
     }
 
-    // ===============================================
+    // =================================================
     // AVATAR
-    // ===============================================
+    // =================================================
 
     if (
       command === "avatar"
