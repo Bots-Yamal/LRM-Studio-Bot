@@ -19,6 +19,10 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const PREFIX = ".";
 const DATA_FILE = "./data.json";
 
+// =====================================================
+// COLORES
+// =====================================================
+
 const COLORS = {
   primary: "#7C8CFF",
   success: "#57F287",
@@ -30,6 +34,10 @@ const COLORS = {
   admin: "#A78BFA",
   royale: "#F5B7FF"
 };
+
+// =====================================================
+// SIMBOLOS
+// =====================================================
 
 const E = {
   money: "$",
@@ -52,6 +60,10 @@ const E = {
   random: "◆",
   royale: "✧"
 };
+
+// =====================================================
+// CLIENT
+// =====================================================
 
 const client = new Client({
   intents: [
@@ -96,7 +108,7 @@ Invita a tus amigos y ayuda a que nuestra comunidad llegue cada vez a más perso
 📨 Invitaciones: $(inviter.invites)
 👥 Miembros: $(server.member_count)
 
-⭐ Cada invitación cuenta. Comparte nuestro servidor con personas que puedan estar interesadas en formar parte de LRM Studio.
+⭐ Cada invitación cuenta. Comparte nuestro servidor con personas que puedan estar interesadas en formar parte de nuestra comunidad.
 
 ¡Gracias por apoyar a la comunidad! ❤️
 — LRM Studio`;
@@ -201,7 +213,9 @@ const DEFAULT_DATA = {
 };
 
 function freshData() {
-  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+  return JSON.parse(
+    JSON.stringify(DEFAULT_DATA)
+  );
 }
 
 function loadData() {
@@ -218,7 +232,10 @@ function loadData() {
 
   try {
     const parsed = JSON.parse(
-      fs.readFileSync(DATA_FILE, "utf8")
+      fs.readFileSync(
+        DATA_FILE,
+        "utf8"
+      )
     );
 
     parsed.users ??= {};
@@ -279,15 +296,23 @@ function loadData() {
     parsed.moderation.warnings ??= {};
 
     parsed.honeypot ??= {};
-    parsed.honeypot.message ??= HONEYPOT_TEMPLATE;
+    parsed.honeypot.message ??=
+      HONEYPOT_TEMPLATE;
+
     parsed.honeypot.channelId ??=
-      parsed.settings.systemChannels.honeypot || null;
+      parsed.settings.systemChannels.honeypot ||
+      null;
+
     parsed.honeypot.messageId ??= null;
     parsed.honeypot.bans ??= 0;
 
     return parsed;
   } catch (error) {
-    console.error("Error leyendo data.json:", error);
+    console.error(
+      "Error leyendo data.json:",
+      error
+    );
+
     return freshData();
   }
 }
@@ -300,6 +325,10 @@ function saveData() {
     JSON.stringify(data, null, 2)
   );
 }
+
+// =====================================================
+// USUARIOS
+// =====================================================
 
 function getUser(id) {
   if (!data.users[id]) {
@@ -318,7 +347,8 @@ function getUser(id) {
     };
   }
 
-  const account = data.users[id];
+  const account =
+    data.users[id];
 
   account.wallet ??= 0;
   account.bank ??= 0;
@@ -346,97 +376,167 @@ function getUser(id) {
 
 function random(min, max) {
   return Math.floor(
-    Math.random() * (max - min + 1)
+    Math.random() *
+      (max - min + 1)
   ) + min;
 }
 
 function money(value) {
-  return `$${Math.floor(value).toLocaleString("es-ES")}`;
+  return `$${Math.floor(
+    value
+  ).toLocaleString("es-ES")}`;
 }
 
-function glassEmbed(color = COLORS.primary) {
+function glassEmbed(
+  color = COLORS.primary
+) {
   return new EmbedBuilder()
     .setColor(color)
     .setFooter({
-      text: "LRM Studio  •  Fluent Glass"
+      text:
+        "LRM Studio  •  Fluent Glass"
     });
 }
 
 function errorEmbed(text) {
-  return glassEmbed(COLORS.error)
-    .setTitle(`${E.error}  Error`)
+  return glassEmbed(
+    COLORS.error
+  )
+    .setTitle(
+      `${E.error}  Error`
+    )
     .setDescription(text);
 }
 
 function successEmbed(text) {
-  return glassEmbed(COLORS.success)
-    .setTitle(`${E.success}  Completado`)
+  return glassEmbed(
+    COLORS.success
+  )
+    .setTitle(
+      `${E.success}  Completado`
+    )
     .setDescription(text);
 }
 
-function cooldown(account, name, duration) {
+function cooldown(
+  account,
+  name,
+  duration
+) {
   const now = Date.now();
-  const last = account.cooldowns[name] || 0;
-  const remaining = duration - (now - last);
+
+  const last =
+    account.cooldowns[name] || 0;
+
+  const remaining =
+    duration -
+    (now - last);
 
   if (remaining > 0) {
     return remaining;
   }
 
   account.cooldowns[name] = now;
+
   saveData();
 
   return 0;
 }
 
-function getLevelRank(userId) {
-  const ranking = Object.entries(data.users)
-    .sort((a, b) => {
-      const levelDifference =
-        (b[1].level || 1) - (a[1].level || 1);
+// =====================================================
+// RANK
+// =====================================================
 
-      if (levelDifference !== 0) {
+function getLevelRank(userId) {
+  const ranking =
+    Object.entries(
+      data.users
+    ).sort((a, b) => {
+      const levelDifference =
+        (b[1].level || 1) -
+        (a[1].level || 1);
+
+      if (
+        levelDifference !== 0
+      ) {
         return levelDifference;
       }
 
-      return (b[1].xp || 0) - (a[1].xp || 0);
+      return (
+        (b[1].xp || 0) -
+        (a[1].xp || 0)
+      );
     });
 
   const position =
-    ranking.findIndex(([id]) => id === userId);
+    ranking.findIndex(
+      ([id]) =>
+        id === userId
+    );
 
   return position === -1
     ? ranking.length + 1
     : position + 1;
 }
 
-async function sendLevelUp(guild, userId, account) {
+// =====================================================
+// LEVEL UP
+// =====================================================
+
+async function sendLevelUp(
+  guild,
+  userId,
+  account
+) {
   if (!guild) return;
 
   const channelId =
-    data.settings.systemChannels.niveles;
+    data.settings
+      .systemChannels
+      .niveles;
 
   if (!channelId) return;
 
   const channel =
-    guild.channels.cache.get(channelId);
+    guild.channels.cache.get(
+      channelId
+    );
 
-  if (!channel?.isTextBased()) return;
+  if (!channel?.isTextBased()) {
+    return;
+  }
 
-  const rank = getLevelRank(userId);
+  const rank =
+    getLevelRank(userId);
 
-  const text = LEVEL_TEMPLATE
-    .replaceAll("$(user.mention)", `<@${userId}>`)
-    .replaceAll("$(level)", String(account.level))
-    .replaceAll("$(xp)", String(account.xp))
-    .replaceAll("$(rank)", String(rank));
+  const text =
+    LEVEL_TEMPLATE
+      .replaceAll(
+        "$(user.mention)",
+        `<@${userId}>`
+      )
+      .replaceAll(
+        "$(level)",
+        String(account.level)
+      )
+      .replaceAll(
+        "$(xp)",
+        String(account.xp)
+      )
+      .replaceAll(
+        "$(rank)",
+        String(rank)
+      );
 
-  await channel.send({
-    embeds: [
-      glassEmbed(COLORS.level)
-        .setDescription(text)
-    ]
-  }).catch(() => {});
+  await channel
+    .send({
+      embeds: [
+        glassEmbed(
+          COLORS.level
+        ).setDescription(text)
+      ]
+    })
+    .catch(() => {});
 }
 
 async function addXP(
@@ -444,7 +544,8 @@ async function addXP(
   amount = random(3, 8),
   guild = null
 ) {
-  const account = getUser(id);
+  const account =
+    getUser(id);
 
   account.xp += amount;
 
@@ -458,12 +559,16 @@ async function addXP(
       account.level * 100;
 
     account.level++;
+
     levelsGained++;
   }
 
   saveData();
 
-  if (levelsGained > 0 && guild) {
+  if (
+    levelsGained > 0 &&
+    guild
+  ) {
     await sendLevelUp(
       guild,
       id,
@@ -497,10 +602,12 @@ async function sendLog(
 
   const logEmbed =
     glassEmbed(
-      options.color || COLORS.info
+      options.color ||
+      COLORS.info
     )
       .setTitle(
-        options.title || "Log"
+        options.title ||
+        "Log"
       )
       .setDescription(
         options.description ||
@@ -508,15 +615,19 @@ async function sendLog(
       )
       .setTimestamp();
 
-  if (options.fields?.length) {
+  if (
+    options.fields?.length
+  ) {
     logEmbed.addFields(
       options.fields
     );
   }
 
-  await channel.send({
-    embeds: [logEmbed]
-  }).catch(() => {});
+  await channel
+    .send({
+      embeds: [logEmbed]
+    })
+    .catch(() => {});
 }
 
 async function logAction(
@@ -543,36 +654,49 @@ async function logAction(
 // INVITES
 // =====================================================
 
-const inviteCache = new Map();
+const inviteCache =
+  new Map();
 
-async function cacheGuildInvites(guild) {
+async function cacheGuildInvites(
+  guild
+) {
   const invites =
     await guild.invites
       .fetch()
       .catch(() => null);
 
-  if (!invites) return;
+  if (!invites) {
+    return;
+  }
 
   inviteCache.set(
     guild.id,
     new Map(
-      invites.map(invite => [
-        invite.code,
-        invite.uses || 0
-      ])
+      invites.map(
+        invite => [
+          invite.code,
+          invite.uses || 0
+        ]
+      )
     )
   );
 }
 
-function ensureInviteStats(userId) {
-  data.inviteSystem.users[userId] ??= {
+function ensureInviteStats(
+  userId
+) {
+  data.inviteSystem.users[
+    userId
+  ] ??= {
     invites: 0,
     newAccounts: 0,
     leaves: 0
   };
 
   const stats =
-    data.inviteSystem.users[userId];
+    data.inviteSystem.users[
+      userId
+    ];
 
   stats.invites ??= 0;
   stats.newAccounts ??= 0;
@@ -586,180 +710,243 @@ function isNewAccount(user) {
     Date.now() -
     user.createdTimestamp;
 
-  // Menos de 7 días.
-  return age < 7 * 24 * 60 * 60 * 1000;
+  return (
+    age <
+    7 * 24 * 60 * 60 * 1000
+  );
 }
 
-client.on("inviteCreate", async invite => {
-  await cacheGuildInvites(invite.guild);
-});
+client.on(
+  "inviteCreate",
+  async invite => {
+    await cacheGuildInvites(
+      invite.guild
+    );
+  }
+);
 
-client.on("inviteDelete", async invite => {
-  await cacheGuildInvites(invite.guild);
-});
+client.on(
+  "inviteDelete",
+  async invite => {
+    await cacheGuildInvites(
+      invite.guild
+    );
+  }
+);
 
-client.on("guildMemberAdd", async member => {
-  const guild = member.guild;
+client.on(
+  "guildMemberAdd",
+  async member => {
+    const guild =
+      member.guild;
 
-  // ---------------------------
-  // BIENVENIDA
-  // ---------------------------
+    // WELCOME
+    const welcomeChannelId =
+      data.settings
+        .systemChannels
+        .bienvenida;
 
-  const welcomeChannelId =
-    data.settings.systemChannels.bienvenida;
+    const welcomeChannel =
+      welcomeChannelId
+        ? guild.channels.cache.get(
+            welcomeChannelId
+          )
+        : null;
 
-  const welcomeChannel =
-    welcomeChannelId
-      ? guild.channels.cache.get(welcomeChannelId)
-      : null;
+    if (
+      welcomeChannel?.isTextBased()
+    ) {
+      const text =
+        WELCOME_TEMPLATE
+          .replaceAll(
+            "$(user.mention)",
+            `${member}`
+          )
+          .replaceAll(
+            "$(server.member_count)",
+            String(
+              guild.memberCount
+            )
+          );
 
-  if (welcomeChannel?.isTextBased()) {
-    const text =
-      WELCOME_TEMPLATE
-        .replaceAll(
-          "$(user.mention)",
-          `${member}`
-        )
-        .replaceAll(
-          "$(server.member_count)",
-          String(guild.memberCount)
+      await welcomeChannel
+        .send({
+          embeds: [
+            glassEmbed(
+              COLORS.primary
+            ).setDescription(
+              text
+            )
+          ]
+        })
+        .catch(() => {});
+    }
+
+    // INVITE
+    const before =
+      inviteCache.get(
+        guild.id
+      ) ||
+      new Map();
+
+    const current =
+      await guild.invites
+        .fetch()
+        .catch(() => null);
+
+    if (!current) {
+      return;
+    }
+
+    const usedInvite =
+      current.find(invite => {
+        const oldUses =
+          before.get(
+            invite.code
+          ) || 0;
+
+        return (
+          (invite.uses || 0) >
+          oldUses
         );
+      });
 
-    await welcomeChannel.send({
-      embeds: [
-        glassEmbed(COLORS.primary)
-          .setDescription(text)
-      ]
-    }).catch(() => {});
-  }
-
-  // ---------------------------
-  // DETECTAR INVITADOR
-  // ---------------------------
-
-  const before =
-    inviteCache.get(guild.id) ||
-    new Map();
-
-  const current =
-    await guild.invites
-      .fetch()
-      .catch(() => null);
-
-  if (!current) return;
-
-  const usedInvite =
-    current.find(invite => {
-      const oldUses =
-        before.get(invite.code) || 0;
-
-      return (
-        (invite.uses || 0) >
-        oldUses
-      );
-    });
-
-  inviteCache.set(
-    guild.id,
-    new Map(
-      current.map(invite => [
-        invite.code,
-        invite.uses || 0
-      ])
-    )
-  );
-
-  if (!usedInvite?.inviter) {
-    return;
-  }
-
-  const inviter =
-    usedInvite.inviter;
-
-  const stats =
-    ensureInviteStats(inviter.id);
-
-  stats.invites++;
-
-  const newAccount =
-    isNewAccount(member.user);
-
-  if (newAccount) {
-    stats.newAccounts++;
-  }
-
-  data.inviteSystem.members[member.id] = {
-    inviterId: inviter.id,
-    joinedAt: Date.now(),
-    newAccount
-  };
-
-  saveData();
-
-  // ---------------------------
-  // MENSAJE INVITES
-  // ---------------------------
-
-  const inviteChannelId =
-    data.settings.systemChannels.invites;
-
-  const inviteChannel =
-    inviteChannelId
-      ? guild.channels.cache.get(inviteChannelId)
-      : null;
-
-  if (inviteChannel?.isTextBased()) {
-    const text =
-      INVITE_TEMPLATE
-        .replaceAll(
-          "$(inviter.mention)",
-          `${inviter}`
+    inviteCache.set(
+      guild.id,
+      new Map(
+        current.map(
+          invite => [
+            invite.code,
+            invite.uses || 0
+          ]
         )
-        .replaceAll(
-          "$(inviter.invites)",
-          String(stats.invites)
-        )
-        .replaceAll(
-          "$(server.member_count)",
-          String(guild.memberCount)
-        );
-
-    await inviteChannel.send({
-      embeds: [
-        glassEmbed(COLORS.info)
-          .setDescription(text)
-      ]
-    }).catch(() => {});
-  }
-});
-
-client.on("guildMemberRemove", member => {
-  const tracked =
-    data.inviteSystem.members[member.id];
-
-  if (!tracked?.inviterId) {
-    return;
-  }
-
-  const stats =
-    ensureInviteStats(
-      tracked.inviterId
+      )
     );
 
-  stats.leaves++;
+    if (
+      !usedInvite?.inviter
+    ) {
+      return;
+    }
 
-  delete data.inviteSystem.members[
-    member.id
-  ];
+    const inviter =
+      usedInvite.inviter;
 
-  saveData();
-});
+    const stats =
+      ensureInviteStats(
+        inviter.id
+      );
+
+    stats.invites++;
+
+    const newAccount =
+      isNewAccount(
+        member.user
+      );
+
+    if (newAccount) {
+      stats.newAccounts++;
+    }
+
+    data.inviteSystem.members[
+      member.id
+    ] = {
+      inviterId:
+        inviter.id,
+      joinedAt:
+        Date.now(),
+      newAccount
+    };
+
+    saveData();
+
+    const inviteChannelId =
+      data.settings
+        .systemChannels
+        .invites;
+
+    const inviteChannel =
+      inviteChannelId
+        ? guild.channels.cache.get(
+            inviteChannelId
+          )
+        : null;
+
+    if (
+      inviteChannel?.isTextBased()
+    ) {
+      const text =
+        INVITE_TEMPLATE
+          .replaceAll(
+            "$(inviter.mention)",
+            `${inviter}`
+          )
+          .replaceAll(
+            "$(inviter.invites)",
+            String(
+              stats.invites
+            )
+          )
+          .replaceAll(
+            "$(server.member_count)",
+            String(
+              guild.memberCount
+            )
+          );
+
+      await inviteChannel
+        .send({
+          embeds: [
+            glassEmbed(
+              COLORS.info
+            ).setDescription(
+              text
+            )
+          ]
+        })
+        .catch(() => {});
+    }
+  }
+);
+
+client.on(
+  "guildMemberRemove",
+  member => {
+    const tracked =
+      data.inviteSystem.members[
+        member.id
+      ];
+
+    if (
+      !tracked?.inviterId
+    ) {
+      return;
+    }
+
+    const stats =
+      ensureInviteStats(
+        tracked.inviterId
+      );
+
+    stats.leaves++;
+
+    delete data
+      .inviteSystem
+      .members[
+        member.id
+      ];
+
+    saveData();
+  }
+);
 
 // =====================================================
-// PARTNERS / ALIANZAS / AFFYS
+// PARTNERS
 // =====================================================
 
-function ensurePartner(userId) {
+function ensurePartner(
+  userId
+) {
   data.partners[userId] ??= {
     points: 0,
     alliances: 0,
@@ -776,18 +963,22 @@ function ensurePartner(userId) {
   return partner;
 }
 
-function getPartnerRank(userId) {
+function getPartnerRank(
+  userId
+) {
   const ranking =
-    Object.entries(data.partners)
-      .sort(
-        (a, b) =>
-          (b[1].points || 0) -
-          (a[1].points || 0)
-      );
+    Object.entries(
+      data.partners
+    ).sort(
+      (a, b) =>
+        (b[1].points || 0) -
+        (a[1].points || 0)
+    );
 
   const index =
     ranking.findIndex(
-      ([id]) => id === userId
+      ([id]) =>
+        id === userId
     );
 
   return index === -1
@@ -795,7 +986,9 @@ function getPartnerRank(userId) {
     : index + 1;
 }
 
-function extractInviteCode(text) {
+function extractInviteCode(
+  text
+) {
   const match =
     String(text).match(
       /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|discord(?:app)?\.com\/invite\/)([A-Za-z0-9-]+)/i
@@ -813,7 +1006,9 @@ async function processPartnerInvite(
       message.content
     );
 
-  if (!code) return;
+  if (!code) {
+    return;
+  }
 
   const invite =
     await client
@@ -824,6 +1019,13 @@ async function processPartnerInvite(
     return;
   }
 
+  if (
+    invite.guild.id ===
+    message.guild.id
+  ) {
+    return;
+  }
+
   const partner =
     ensurePartner(
       message.author.id
@@ -831,7 +1033,9 @@ async function processPartnerInvite(
 
   partner.points++;
 
-  if (type === "alianza") {
+  if (
+    type === "alianza"
+  ) {
     partner.alliances++;
   } else {
     partner.affys++;
@@ -853,7 +1057,8 @@ async function processPartnerInvite(
     template
       .replaceAll(
         "$(invite.guild.name)",
-        invite.guild.name || "Servidor"
+        invite.guild.name ||
+          "Servidor"
       )
       .replaceAll(
         "$(user.mention)",
@@ -865,19 +1070,24 @@ async function processPartnerInvite(
       )
       .replaceAll(
         "$(partner.points)",
-        String(partner.points)
+        String(
+          partner.points
+        )
       );
 
-  await message.reply({
-    embeds: [
-      glassEmbed(
-        type === "alianza"
-          ? COLORS.primary
-          : COLORS.royale
-      )
-        .setDescription(text)
-    ]
-  }).catch(() => {});
+  await message
+    .reply({
+      embeds: [
+        glassEmbed(
+          type === "alianza"
+            ? COLORS.primary
+            : COLORS.royale
+        ).setDescription(
+          text
+        )
+      ]
+    })
+    .catch(() => {});
 }
 
 // =====================================================
@@ -926,7 +1136,8 @@ function royaleText(roll) {
 }
 
 function royaleResult(roll) {
-  const [a, b, c] = roll;
+  const [a, b, c] =
+    roll;
 
   if (
     a === b &&
@@ -946,7 +1157,9 @@ function royaleResult(roll) {
   return "none";
 }
 
-function royaleWarning(userId) {
+function royaleWarning(
+  userId
+) {
   const row =
     new ActionRowBuilder()
       .addComponents(
@@ -954,7 +1167,9 @@ function royaleWarning(userId) {
           .setCustomId(
             `royale_accept:${userId}`
           )
-          .setLabel("Aceptar")
+          .setLabel(
+            "Aceptar"
+          )
           .setStyle(
             ButtonStyle.Success
           ),
@@ -963,7 +1178,9 @@ function royaleWarning(userId) {
           .setCustomId(
             `royale_reject:${userId}`
           )
-          .setLabel("Rechazar")
+          .setLabel(
+            "Rechazar"
+          )
           .setStyle(
             ButtonStyle.Secondary
           )
@@ -971,7 +1188,9 @@ function royaleWarning(userId) {
 
   return {
     embeds: [
-      glassEmbed(COLORS.royale)
+      glassEmbed(
+        COLORS.royale
+      )
         .setTitle(
           `${E.royale}  Luck Royale`
         )
@@ -986,11 +1205,15 @@ function royaleWarning(userId) {
           `¿Quieres comenzar?`
         )
     ],
-    components: [row]
+    components: [
+      row
+    ]
   };
 }
 
-async function startRoyale(interaction) {
+async function startRoyale(
+  interaction
+) {
   const user =
     interaction.user;
 
@@ -1018,11 +1241,14 @@ async function startRoyale(interaction) {
   }
 
   account.luckRoyale.spins++;
+
   saveData();
 
   await interaction.update({
     embeds: [
-      glassEmbed(COLORS.royale)
+      glassEmbed(
+        COLORS.royale
+      )
         .setTitle(
           `${E.royale}  Luck Royale`
         )
@@ -1036,7 +1262,11 @@ async function startRoyale(interaction) {
     components: []
   });
 
-  for (let i = 0; i < 8; i++) {
+  for (
+    let i = 0;
+    i < 8;
+    i++
+  ) {
     await new Promise(
       resolve =>
         setTimeout(
@@ -1055,7 +1285,9 @@ async function startRoyale(interaction) {
               `${E.royale}  Luck Royale`
             )
             .setDescription(
-              `**Girando... ${i + 1}/8**\n\n` +
+              `**Girando... ${
+                i + 1
+              }/8**\n\n` +
               royaleText(
                 royaleRoll()
               )
@@ -1075,7 +1307,9 @@ async function startRoyale(interaction) {
 
   let resultText;
 
-  if (result === "triple") {
+  if (
+    result === "triple"
+  ) {
     account.luckRoyale.wins3++;
 
     const prize =
@@ -1134,7 +1368,9 @@ async function startRoyale(interaction) {
           `${E.royale}  Resultado`
         )
         .setDescription(
-          `${royaleText(finalRoll)}\n\n${resultText}\n\n` +
+          `${royaleText(
+            finalRoll
+          )}\n\n${resultText}\n\n` +
           `**Estadísticas**\n` +
           `Tiradas: **${account.luckRoyale.spins}**\n` +
           `Dobles: **${account.luckRoyale.wins2}**\n` +
@@ -1145,157 +1381,238 @@ async function startRoyale(interaction) {
 }
 
 // =====================================================
-// SLASH COMMANDS USER
+// SLASH USER
 // =====================================================
 
 const userCommands = [
+
   new SlashCommandBuilder()
     .setName("help")
-    .setDescription("Muestra los comandos."),
+    .setDescription(
+      "Muestra los comandos."
+    ),
 
   new SlashCommandBuilder()
     .setName("balance")
-    .setDescription("Consulta un balance.")
+    .setDescription(
+      "Consulta un balance."
+    )
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription("Usuario")
+        .setDescription(
+          "Usuario"
+        )
     ),
 
   new SlashCommandBuilder()
     .setName("work")
-    .setDescription("Trabaja y consigue dinero."),
+    .setDescription(
+      "Trabaja y consigue dinero."
+    ),
+
+  new SlashCommandBuilder()
+    .setName("risk")
+    .setDescription(
+      "Arriesga dinero."
+    ),
+
+  new SlashCommandBuilder()
+    .setName("crime")
+    .setDescription(
+      "Intenta conseguir dinero mediante crime."
+    ),
 
   new SlashCommandBuilder()
     .setName("daily")
-    .setDescription("Recompensa diaria."),
+    .setDescription(
+      "Recompensa diaria."
+    ),
 
   new SlashCommandBuilder()
     .setName("dep")
-    .setDescription("Deposita dinero.")
+    .setDescription(
+      "Deposita dinero."
+    )
     .addIntegerOption(o =>
       o.setName("cantidad")
-        .setDescription("Cantidad")
+        .setDescription(
+          "Cantidad"
+        )
         .setMinValue(1)
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("with")
-    .setDescription("Retira dinero.")
+    .setDescription(
+      "Retira dinero."
+    )
     .addIntegerOption(o =>
       o.setName("cantidad")
-        .setDescription("Cantidad")
+        .setDescription(
+          "Cantidad"
+        )
         .setMinValue(1)
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("pay")
-    .setDescription("Envía dinero.")
+    .setDescription(
+      "Envía dinero."
+    )
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription("Usuario")
+        .setDescription(
+          "Usuario"
+        )
         .setRequired(true)
     )
     .addIntegerOption(o =>
       o.setName("cantidad")
-        .setDescription("Cantidad")
+        .setDescription(
+          "Cantidad"
+        )
         .setMinValue(1)
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("profile")
-    .setDescription("Muestra un perfil.")
+    .setDescription(
+      "Muestra un perfil."
+    )
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription("Usuario")
+        .setDescription(
+          "Usuario"
+        )
     ),
 
   new SlashCommandBuilder()
     .setName("inventory")
-    .setDescription("Muestra tu inventario."),
+    .setDescription(
+      "Muestra tu inventario."
+    ),
 
   new SlashCommandBuilder()
     .setName("rank")
-    .setDescription("Muestra tu nivel."),
+    .setDescription(
+      "Muestra tu nivel."
+    ),
 
   new SlashCommandBuilder()
     .setName("shop")
-    .setDescription("Muestra la tienda."),
+    .setDescription(
+      "Muestra la tienda."
+    ),
 
   new SlashCommandBuilder()
     .setName("buy")
-    .setDescription("Compra un objeto.")
+    .setDescription(
+      "Compra un objeto."
+    )
     .addStringOption(o =>
       o.setName("producto")
-        .setDescription("Producto")
+        .setDescription(
+          "Producto"
+        )
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("use")
-    .setDescription("Usa un objeto.")
+    .setDescription(
+      "Usa un objeto."
+    )
     .addStringOption(o =>
       o.setName("objeto")
-        .setDescription("Objeto")
+        .setDescription(
+          "Objeto"
+        )
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("baltop")
-    .setDescription("Ranking de dinero."),
+    .setDescription(
+      "Ranking de dinero."
+    ),
 
   new SlashCommandBuilder()
     .setName("leveltop")
-    .setDescription("Ranking de niveles."),
+    .setDescription(
+      "Ranking de niveles."
+    ),
 
   new SlashCommandBuilder()
     .setName("coinflip")
-    .setDescription("Cara o cruz."),
+    .setDescription(
+      "Cara o cruz."
+    ),
 
   new SlashCommandBuilder()
     .setName("8ball")
-    .setDescription("Pregunta a la bola.")
+    .setDescription(
+      "Pregunta a la bola."
+    )
     .addStringOption(o =>
       o.setName("pregunta")
-        .setDescription("Pregunta")
+        .setDescription(
+          "Pregunta"
+        )
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("random")
-    .setDescription("Genera un número aleatorio.")
+    .setDescription(
+      "Genera un número aleatorio."
+    )
     .addIntegerOption(o =>
       o.setName("min")
-        .setDescription("Mínimo")
+        .setDescription(
+          "Mínimo"
+        )
         .setRequired(true)
     )
     .addIntegerOption(o =>
       o.setName("max")
-        .setDescription("Máximo")
+        .setDescription(
+          "Máximo"
+        )
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("dice")
-    .setDescription("Lanza un dado."),
+    .setDescription(
+      "Lanza un dado."
+    ),
 
   new SlashCommandBuilder()
     .setName("choose")
-    .setDescription("Elige entre varias opciones.")
+    .setDescription(
+      "Elige entre varias opciones."
+    )
     .addStringOption(o =>
       o.setName("opciones")
-        .setDescription("Ejemplo: Minecraft | Sonic | Rocket League")
+        .setDescription(
+          "Minecraft | Sonic | Rocket League"
+        )
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("rps")
-    .setDescription("Piedra, papel o tijera.")
+    .setDescription(
+      "Piedra, papel o tijera."
+    )
     .addStringOption(o =>
       o.setName("eleccion")
-        .setDescription("Tu elección")
+        .setDescription(
+          "Tu elección"
+        )
         .setRequired(true)
         .addChoices(
           {
@@ -1315,80 +1632,127 @@ const userCommands = [
 
   new SlashCommandBuilder()
     .setName("luckroyale")
-    .setDescription("Juega Luck Royale."),
+    .setDescription(
+      "Juega Luck Royale."
+    ),
 
   new SlashCommandBuilder()
     .setName("invitever")
-    .setDescription("Muestra tus estadísticas de invitaciones.")
+    .setDescription(
+      "Muestra estadísticas de invitaciones."
+    )
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription("Usuario")
+        .setDescription(
+          "Usuario"
+        )
     ),
 
   new SlashCommandBuilder()
     .setName("sugerencia")
-    .setDescription("Envía una sugerencia.")
+    .setDescription(
+      "Envía una sugerencia."
+    )
     .addStringOption(o =>
       o.setName("mensaje")
-        .setDescription("Sugerencia")
+        .setDescription(
+          "Sugerencia"
+        )
         .setMaxLength(1500)
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("ping")
-    .setDescription("Muestra el ping."),
+    .setDescription(
+      "Muestra el ping."
+    ),
 
   new SlashCommandBuilder()
     .setName("botinfo")
-    .setDescription("Información del bot."),
+    .setDescription(
+      "Información del bot."
+    ),
 
   new SlashCommandBuilder()
     .setName("serverinfo")
-    .setDescription("Información del servidor."),
+    .setDescription(
+      "Información del servidor."
+    ),
 
   new SlashCommandBuilder()
     .setName("membercount")
-    .setDescription("Muestra la cantidad de miembros."),
+    .setDescription(
+      "Muestra la cantidad de miembros."
+    ),
 
   new SlashCommandBuilder()
     .setName("uptime")
-    .setDescription("Muestra el tiempo encendido."),
+    .setDescription(
+      "Muestra el tiempo encendido."
+    ),
 
   new SlashCommandBuilder()
     .setName("userinfo")
-    .setDescription("Información de usuario.")
+    .setDescription(
+      "Información de usuario."
+    )
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription("Usuario")
+        .setDescription(
+          "Usuario"
+        )
     ),
 
   new SlashCommandBuilder()
     .setName("avatar")
-    .setDescription("Muestra un avatar.")
+    .setDescription(
+      "Muestra un avatar."
+    )
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription("Usuario")
+        .setDescription(
+          "Usuario"
+        )
     )
 ];
 
 // =====================================================
-// REGISTRO
+// REGISTRO DE COMANDOS
 // =====================================================
 
-const commands = [
+// IMPORTANTE:
+// admin.js puede devolver SlashCommandBuilder
+// o comandos que ya están en JSON.
+// Esta función acepta ambos.
+
+const allCommands = [
   ...userCommands,
   ...adminCommands
-].map(
-  command =>
-    command.toJSON()
-);
+];
+
+const commands =
+  allCommands.map(command => {
+    if (
+      command &&
+      typeof command.toJSON ===
+        "function"
+    ) {
+      return command.toJSON();
+    }
+
+    return command;
+  });
 
 async function registerCommands() {
-  if (!TOKEN || !CLIENT_ID) {
+  if (
+    !TOKEN ||
+    !CLIENT_ID
+  ) {
     console.error(
       "Falta DISCORD_TOKEN o CLIENT_ID."
     );
+
     return;
   }
 
@@ -1396,7 +1760,9 @@ async function registerCommands() {
     const rest =
       new REST({
         version: "10"
-      }).setToken(TOKEN);
+      }).setToken(
+        TOKEN
+      );
 
     await rest.put(
       Routes.applicationCommands(
@@ -1422,22 +1788,27 @@ async function registerCommands() {
 // ADMIN
 // =====================================================
 
-setupAdmin(client, {
-  data,
-  saveData,
-  sendLog,
-  logAction,
-  getUser,
-  prefix: PREFIX,
-  colors: COLORS,
-  symbols: E
-});
+setupAdmin(
+  client,
+  {
+    data,
+    saveData,
+    sendLog,
+    logAction,
+    getUser,
+    prefix: PREFIX,
+    colors: COLORS,
+    symbols: E
+  }
+);
 
 // =====================================================
 // USER COMMAND LOGIC
 // =====================================================
 
-async function executeUserCommand(ctx) {
+async function executeUserCommand(
+  ctx
+) {
   const {
     command,
     user,
@@ -1449,35 +1820,35 @@ async function executeUserCommand(ctx) {
     reply
   } = ctx;
 
-  if (command === "help") {
+  // ---------------------------------------------------
+  // HELP
+  // ---------------------------------------------------
+
+  if (
+    command === "help"
+  ) {
     return reply({
       embeds: [
         glassEmbed()
-          .setTitle("◉ LRM Studio • Help")
+          .setTitle(
+            "◉ LRM Studio • Help"
+          )
           .setDescription(
-            `### ${E.money} Economía\n` +
-            "`balance` `work` `daily` `dep` `with` `pay`\n" +
-            "`shop` `buy` `use` `baltop`\n\n" +
-
-            `### ${E.user} Perfil\n` +
-            "`profile` `inventory` `rank` `leveltop`\n\n" +
-
-            `### ${E.random} Diversión\n` +
-            "`coinflip` `8ball` `random` `dice` `choose` `rps` `luckroyale`\n\n" +
-
-            "### 🔗 Comunidad\n" +
-            "`invitever` `sugerencia`\n\n" +
-
-            `### ${E.info} Información\n` +
-            "`ping` `botinfo` `serverinfo` `membercount` `uptime` `userinfo` `avatar`\n\n" +
-
-            "Todos están disponibles con **.** y **/** cuando corresponde."
+            `Usá **.help** para abrir el menú interactivo.\n\n` +
+            `También podés usar **/help**.\n\n` +
+            `Desde el menú vas a encontrar las categorías de comandos de LRM Studio.`
           )
       ]
     });
   }
 
-  if (command === "luckroyale") {
+  // ---------------------------------------------------
+  // LUCK ROYALE
+  // ---------------------------------------------------
+
+  if (
+    command === "luckroyale"
+  ) {
     return reply(
       royaleWarning(
         user.id
@@ -1485,12 +1856,21 @@ async function executeUserCommand(ctx) {
     );
   }
 
-  if (command === "balance") {
+  // ---------------------------------------------------
+  // BALANCE
+  // ---------------------------------------------------
+
+  if (
+    command === "balance"
+  ) {
     const target =
-      getTarget() || user;
+      getTarget() ||
+      user;
 
     const account =
-      getUser(target.id);
+      getUser(
+        target.id
+      );
 
     return reply({
       embeds: [
@@ -1505,8 +1885,12 @@ async function executeUserCommand(ctx) {
           )
           .setDescription(
             `${target}\n\n` +
-            `${E.money} Wallet\n**${money(account.wallet)}**\n\n` +
-            `${E.bank} Banco\n**${money(account.bank)}**\n\n` +
+            `${E.money} Wallet\n**${money(
+              account.wallet
+            )}**\n\n` +
+            `${E.bank} Banco\n**${money(
+              account.bank
+            )}**\n\n` +
             `${E.transfer} Total\n**${money(
               account.wallet +
               account.bank
@@ -1516,9 +1900,17 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "work") {
+  // ---------------------------------------------------
+  // WORK
+  // ---------------------------------------------------
+
+  if (
+    command === "work"
+  ) {
     const account =
-      getUser(user.id);
+      getUser(
+        user.id
+      );
 
     const remaining =
       cooldown(
@@ -1540,9 +1932,13 @@ async function executeUserCommand(ctx) {
     }
 
     const reward =
-      random(20, 30);
+      random(
+        20,
+        30
+      );
 
-    account.wallet += reward;
+    account.wallet +=
+      reward;
 
     await addXP(
       user.id,
@@ -1555,16 +1951,250 @@ async function executeUserCommand(ctx) {
     return reply({
       embeds: [
         successEmbed(
-          `Ganaste **${money(reward)}** trabajando.\n\n` +
-          `Wallet: **${money(account.wallet)}**`
+          `Ganaste **${money(
+            reward
+          )}** trabajando.\n\n` +
+          `Wallet: **${money(
+            account.wallet
+          )}**`
         )
       ]
     });
   }
 
-  if (command === "daily") {
+  // ---------------------------------------------------
+  // RISK
+  // ---------------------------------------------------
+
+  if (
+    command === "risk"
+  ) {
     const account =
-      getUser(user.id);
+      getUser(
+        user.id
+      );
+
+    const remaining =
+      cooldown(
+        account,
+        "risk",
+        60_000
+      );
+
+    if (remaining) {
+      return reply({
+        embeds: [
+          errorEmbed(
+            `Debes esperar **${Math.ceil(
+              remaining / 1000
+            )}s** antes de usar risk nuevamente.`
+          )
+        ]
+      });
+    }
+
+    const won =
+      Math.random() < 0.30;
+
+    if (won) {
+      const amount =
+        random(
+          40,
+          70
+        );
+
+      account.wallet +=
+        amount;
+
+      await addXP(
+        user.id,
+        random(3, 8),
+        guild
+      );
+
+      saveData();
+
+      return reply({
+        embeds: [
+          glassEmbed(
+            COLORS.success
+          )
+            .setTitle(
+              `${E.gain}  Risk`
+            )
+            .setDescription(
+              `**¡Ganaste!**\n\n` +
+              `Recibiste **${money(
+                amount
+              )}**.\n\n` +
+              `Wallet: **${money(
+                account.wallet
+              )}**`
+            )
+        ]
+      });
+    }
+
+    const loss =
+      random(
+        50,
+        100
+      );
+
+    account.wallet -=
+      loss;
+
+    await addXP(
+      user.id,
+      random(3, 8),
+      guild
+    );
+
+    saveData();
+
+    return reply({
+      embeds: [
+        glassEmbed(
+          COLORS.error
+        )
+          .setTitle(
+            `${E.loss}  Risk`
+          )
+          .setDescription(
+            `**Perdiste.**\n\n` +
+            `Perdiste **${money(
+              loss
+            )}**.\n\n` +
+            `Wallet: **${money(
+              account.wallet
+            )}**`
+          )
+      ]
+    });
+  }
+
+  // ---------------------------------------------------
+  // CRIME
+  // ---------------------------------------------------
+
+  if (
+    command === "crime"
+  ) {
+    const account =
+      getUser(
+        user.id
+      );
+
+    const remaining =
+      cooldown(
+        account,
+        "crime",
+        120_000
+      );
+
+    if (remaining) {
+      return reply({
+        embeds: [
+          errorEmbed(
+            `Debes esperar **${Math.ceil(
+              remaining / 1000
+            )}s** antes de usar crime nuevamente.`
+          )
+        ]
+      });
+    }
+
+    const won =
+      Math.random() < 0.20;
+
+    if (won) {
+      const amount =
+        random(
+          50,
+          80
+        );
+
+      account.wallet +=
+        amount;
+
+      await addXP(
+        user.id,
+        random(3, 8),
+        guild
+      );
+
+      saveData();
+
+      return reply({
+        embeds: [
+          glassEmbed(
+            COLORS.success
+          )
+            .setTitle(
+              `${E.gain}  Crime`
+            )
+            .setDescription(
+              `**¡Salió bien!**\n\n` +
+              `Ganaste **${money(
+                amount
+              )}**.\n\n` +
+              `Wallet: **${money(
+                account.wallet
+              )}**`
+            )
+        ]
+      });
+    }
+
+    const loss =
+      random(
+        70,
+        200
+      );
+
+    account.wallet -=
+      loss;
+
+    await addXP(
+      user.id,
+      random(3, 8),
+      guild
+    );
+
+    saveData();
+
+    return reply({
+      embeds: [
+        glassEmbed(
+          COLORS.error
+        )
+          .setTitle(
+            `${E.loss}  Crime`
+          )
+          .setDescription(
+            `**Fallaste.**\n\n` +
+            `Perdiste **${money(
+              loss
+            )}**.\n\n` +
+            `Wallet: **${money(
+              account.wallet
+            )}**`
+          )
+      ]
+    });
+  }
+
+  // ---------------------------------------------------
+  // DAILY
+  // ---------------------------------------------------
+
+  if (
+    command === "daily"
+  ) {
+    const account =
+      getUser(
+        user.id
+      );
 
     const remaining =
       cooldown(
@@ -1583,7 +2213,8 @@ async function executeUserCommand(ctx) {
       });
     }
 
-    account.wallet += 50;
+    account.wallet +=
+      50;
 
     await addXP(
       user.id,
@@ -1596,11 +2227,18 @@ async function executeUserCommand(ctx) {
     return reply({
       embeds: [
         successEmbed(
-          `Recibiste **$50**.\n\nWallet: **${money(account.wallet)}**`
+          `Recibiste **$50**.\n\n` +
+          `Wallet: **${money(
+            account.wallet
+          )}**`
         )
       ]
     });
   }
+
+  // ---------------------------------------------------
+  // DEP / WITH
+  // ---------------------------------------------------
 
   if (
     command === "dep" ||
@@ -1609,7 +2247,10 @@ async function executeUserCommand(ctx) {
     const amount =
       getInteger(0);
 
-    if (!amount || amount <= 0) {
+    if (
+      !amount ||
+      amount <= 0
+    ) {
       return reply({
         embeds: [
           errorEmbed(
@@ -1620,11 +2261,16 @@ async function executeUserCommand(ctx) {
     }
 
     const account =
-      getUser(user.id);
+      getUser(
+        user.id
+      );
 
-    if (command === "dep") {
+    if (
+      command === "dep"
+    ) {
       if (
-        account.wallet < amount
+        account.wallet <
+        amount
       ) {
         return reply({
           embeds: [
@@ -1635,11 +2281,15 @@ async function executeUserCommand(ctx) {
         });
       }
 
-      account.wallet -= amount;
-      account.bank += amount;
+      account.wallet -=
+        amount;
+
+      account.bank +=
+        amount;
     } else {
       if (
-        account.bank < amount
+        account.bank <
+        amount
       ) {
         return reply({
           embeds: [
@@ -1650,8 +2300,11 @@ async function executeUserCommand(ctx) {
         });
       }
 
-      account.bank -= amount;
-      account.wallet += amount;
+      account.bank -=
+        amount;
+
+      account.wallet +=
+        amount;
     }
 
     saveData();
@@ -1659,20 +2312,27 @@ async function executeUserCommand(ctx) {
     return reply({
       embeds: [
         successEmbed(
-          `${E.money} Wallet: **${money(account.wallet)}**\n` +
-          `${E.bank} Banco: **${money(account.bank)}**`
+          `${E.money} Wallet: **${money(
+            account.wallet
+          )}**\n` +
+          `${E.bank} Banco: **${money(
+            account.bank
+          )}**`
         )
       ]
     });
   }
 
-  if (command === "pay") {
+  // ---------------------------------------------------
+  // PAY
+  // ---------------------------------------------------
+
+  if (
+    command === "pay"
+  ) {
     const target =
       getTarget();
 
-    // CORREGIDO:
-    // el usuario mencionado ya se elimina de los args
-    // en prefix, así que la cantidad está en posición 0.
     const amount =
       getInteger(0);
 
@@ -1691,7 +2351,8 @@ async function executeUserCommand(ctx) {
     }
 
     if (
-      target.id === user.id ||
+      target.id ===
+        user.id ||
       target.bot
     ) {
       return reply({
@@ -1704,13 +2365,18 @@ async function executeUserCommand(ctx) {
     }
 
     const sender =
-      getUser(user.id);
+      getUser(
+        user.id
+      );
 
     const receiver =
-      getUser(target.id);
+      getUser(
+        target.id
+      );
 
     if (
-      sender.wallet < amount
+      sender.wallet <
+      amount
     ) {
       return reply({
         embeds: [
@@ -1721,26 +2387,40 @@ async function executeUserCommand(ctx) {
       });
     }
 
-    sender.wallet -= amount;
-    receiver.wallet += amount;
+    sender.wallet -=
+      amount;
+
+    receiver.wallet +=
+      amount;
 
     saveData();
 
     return reply({
       embeds: [
         successEmbed(
-          `Enviaste **${money(amount)}** a ${target}.`
+          `Enviaste **${money(
+            amount
+          )}** a ${target}.`
         )
       ]
     });
   }
 
-  if (command === "profile") {
+  // ---------------------------------------------------
+  // PROFILE
+  // ---------------------------------------------------
+
+  if (
+    command === "profile"
+  ) {
     const target =
-      getTarget() || user;
+      getTarget() ||
+      user;
 
     const account =
-      getUser(target.id);
+      getUser(
+        target.id
+      );
 
     return reply({
       embeds: [
@@ -1753,20 +2433,34 @@ async function executeUserCommand(ctx) {
           )
           .setDescription(
             `**${target.username}**\n\n` +
-            `${E.money} Wallet: **${money(account.wallet)}**\n` +
-            `${E.bank} Banco: **${money(account.bank)}**\n` +
+            `${E.money} Wallet: **${money(
+              account.wallet
+            )}**\n` +
+            `${E.bank} Banco: **${money(
+              account.bank
+            )}**\n` +
             `${E.level} Nivel: **${account.level}**\n` +
             `XP: **${account.xp}/${account.level * 100}**\n` +
-            `Rank: **#${getLevelRank(target.id)}**\n` +
+            `Rank: **#${getLevelRank(
+              target.id
+            )}**\n` +
             `${E.inventory} Objetos: **${account.inventory.length}**`
           )
       ]
     });
   }
 
-  if (command === "inventory") {
+  // ---------------------------------------------------
+  // INVENTORY
+  // ---------------------------------------------------
+
+  if (
+    command === "inventory"
+  ) {
     const account =
-      getUser(user.id);
+      getUser(
+        user.id
+      );
 
     return reply({
       embeds: [
@@ -1778,8 +2472,13 @@ async function executeUserCommand(ctx) {
             account.inventory.length
               ? account.inventory
                   .map(
-                    (item, index) =>
-                      `**${index + 1}.** ${item}`
+                    (
+                      item,
+                      index
+                    ) =>
+                      `**${
+                        index + 1
+                      }.** ${item}`
                   )
                   .join("\n")
               : "Tu inventario está vacío."
@@ -1788,29 +2487,49 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "rank") {
+  // ---------------------------------------------------
+  // RANK
+  // ---------------------------------------------------
+
+  if (
+    command === "rank"
+  ) {
     const account =
-      getUser(user.id);
+      getUser(
+        user.id
+      );
 
     return reply({
       embeds: [
-        glassEmbed(COLORS.level)
+        glassEmbed(
+          COLORS.level
+        )
           .setTitle(
             `${E.level}  Rank`
           )
           .setDescription(
             `Nivel **${account.level}**\n\n` +
             `XP **${account.xp}/${account.level * 100}**\n` +
-            `Rank global **#${getLevelRank(user.id)}**`
+            `Rank global **#${getLevelRank(
+              user.id
+            )}**`
           )
       ]
     });
   }
 
-  if (command === "shop") {
+  // ---------------------------------------------------
+  // SHOP
+  // ---------------------------------------------------
+
+  if (
+    command === "shop"
+  ) {
     return reply({
       embeds: [
-        glassEmbed(COLORS.economy)
+        glassEmbed(
+          COLORS.economy
+        )
           .setTitle(
             `${E.shop}  Tienda`
           )
@@ -1818,24 +2537,40 @@ async function executeUserCommand(ctx) {
             data.shop.length
               ? data.shop
                   .map(
-                    (item, index) =>
-                      `**${index + 1}. ${item.name}**\n${money(item.price)}`
+                    (
+                      item,
+                      index
+                    ) =>
+                      `**${
+                        index + 1
+                      }. ${item.name}**\n${money(
+                        item.price
+                      )}`
                   )
-                  .join("\n\n")
+                  .join(
+                    "\n\n"
+                  )
               : "La tienda está vacía."
           )
       ]
     });
   }
 
-  if (command === "buy") {
+  // ---------------------------------------------------
+  // BUY
+  // ---------------------------------------------------
+
+  if (
+    command === "buy"
+  ) {
     const productName =
       getString();
 
     const product =
       data.shop.find(
         item =>
-          item.name.toLowerCase() ===
+          item.name
+            .toLowerCase() ===
           productName?.toLowerCase()
       );
 
@@ -1850,7 +2585,9 @@ async function executeUserCommand(ctx) {
     }
 
     const account =
-      getUser(user.id);
+      getUser(
+        user.id
+      );
 
     if (
       account.wallet <
@@ -1866,7 +2603,8 @@ async function executeUserCommand(ctx) {
     }
 
     if (
-      product.type === "role" &&
+      product.type ===
+        "role" &&
       product.roleId
     ) {
       const role =
@@ -1885,7 +2623,9 @@ async function executeUserCommand(ctx) {
       }
 
       try {
-        await member.roles.add(role);
+        await member.roles.add(
+          role
+        );
       } catch {
         return reply({
           embeds: [
@@ -1912,28 +2652,41 @@ async function executeUserCommand(ctx) {
     return reply({
       embeds: [
         successEmbed(
-          `Compraste **${product.name}** por **${money(product.price)}**.`
+          `Compraste **${product.name}** por **${money(
+            product.price
+          )}**.`
         )
       ]
     });
   }
 
-  if (command === "use") {
+  // ---------------------------------------------------
+  // USE
+  // ---------------------------------------------------
+
+  if (
+    command === "use"
+  ) {
     const itemName =
       getString();
 
     const account =
-      getUser(user.id);
+      getUser(
+        user.id
+      );
 
     const index =
       account.inventory
         .findIndex(
           item =>
-            String(item).toLowerCase() ===
+            String(item)
+              .toLowerCase() ===
             itemName?.toLowerCase()
         );
 
-    if (index === -1) {
+    if (
+      index === -1
+    ) {
       return reply({
         embeds: [
           errorEmbed(
@@ -1944,7 +2697,9 @@ async function executeUserCommand(ctx) {
     }
 
     const item =
-      account.inventory[index];
+      account.inventory[
+        index
+      ];
 
     account.inventory.splice(
       index,
@@ -1962,7 +2717,13 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "baltop") {
+  // ---------------------------------------------------
+  // BALTOP
+  // ---------------------------------------------------
+
+  if (
+    command === "baltop"
+  ) {
     const top =
       Object.entries(
         data.users
@@ -1978,7 +2739,10 @@ async function executeUserCommand(ctx) {
               (a[1].bank || 0)
             )
         )
-        .slice(0, 10);
+        .slice(
+          0,
+          10
+        );
 
     return reply({
       embeds: [
@@ -1990,20 +2754,38 @@ async function executeUserCommand(ctx) {
           )
           .setDescription(
             top.length
-              ? top.map(
-                  ([id, account], index) =>
-                    `**${index + 1}.** <@${id}> • **${money(
-                      (account.wallet || 0) +
-                      (account.bank || 0)
-                    )}**`
-                ).join("\n")
+              ? top
+                  .map(
+                    (
+                      [
+                        id,
+                        account
+                      ],
+                      index
+                    ) =>
+                      `**${
+                        index + 1
+                      }.** <@${id}> • **${money(
+                        (account.wallet || 0) +
+                        (account.bank || 0)
+                      )}**`
+                  )
+                  .join(
+                    "\n"
+                  )
               : "No hay datos."
           )
       ]
     });
   }
 
-  if (command === "leveltop") {
+  // ---------------------------------------------------
+  // LEVELTOP
+  // ---------------------------------------------------
+
+  if (
+    command === "leveltop"
+  ) {
     const top =
       Object.entries(
         data.users
@@ -2015,7 +2797,10 @@ async function executeUserCommand(ctx) {
             (b[1].xp || 0) -
               (a[1].xp || 0)
         )
-        .slice(0, 10);
+        .slice(
+          0,
+          10
+        );
 
     return reply({
       embeds: [
@@ -2027,17 +2812,39 @@ async function executeUserCommand(ctx) {
           )
           .setDescription(
             top.length
-              ? top.map(
-                  ([id, account], index) =>
-                    `**${index + 1}.** <@${id}> • Nivel **${account.level || 1}** • XP **${account.xp || 0}**`
-                ).join("\n")
+              ? top
+                  .map(
+                    (
+                      [
+                        id,
+                        account
+                      ],
+                      index
+                    ) =>
+                      `**${
+                        index + 1
+                      }.** <@${id}> • Nivel **${
+                        account.level || 1
+                      }** • XP **${
+                        account.xp || 0
+                      }**`
+                  )
+                  .join(
+                    "\n"
+                  )
               : "No hay datos."
           )
       ]
     });
   }
 
-  if (command === "coinflip") {
+  // ---------------------------------------------------
+  // COINFLIP
+  // ---------------------------------------------------
+
+  if (
+    command === "coinflip"
+  ) {
     return reply({
       embeds: [
         glassEmbed(
@@ -2047,7 +2854,8 @@ async function executeUserCommand(ctx) {
             `${E.random}  Coinflip`
           )
           .setDescription(
-            Math.random() < 0.5
+            Math.random() <
+              0.5
               ? "**Cara**"
               : "**Cruz**"
           )
@@ -2055,7 +2863,13 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "8ball") {
+  // ---------------------------------------------------
+  // 8BALL
+  // ---------------------------------------------------
+
+  if (
+    command === "8ball"
+  ) {
     const question =
       getString();
 
@@ -2090,13 +2904,26 @@ async function executeUserCommand(ctx) {
           )
           .setDescription(
             `**Pregunta**\n${question}\n\n` +
-            `**Respuesta**\n${answers[random(0, answers.length - 1)]}`
+            `**Respuesta**\n${
+              answers[
+                random(
+                  0,
+                  answers.length - 1
+                )
+              ]
+            }`
           )
       ]
     });
   }
 
-  if (command === "random") {
+  // ---------------------------------------------------
+  // RANDOM
+  // ---------------------------------------------------
+
+  if (
+    command === "random"
+  ) {
     const min =
       getInteger(0);
 
@@ -2104,8 +2931,12 @@ async function executeUserCommand(ctx) {
       getInteger(1);
 
     if (
-      !Number.isInteger(min) ||
-      !Number.isInteger(max) ||
+      !Number.isInteger(
+        min
+      ) ||
+      !Number.isInteger(
+        max
+      ) ||
       min > max
     ) {
       return reply({
@@ -2126,34 +2957,61 @@ async function executeUserCommand(ctx) {
             `${E.random}  Random`
           )
           .setDescription(
-            `Resultado: **${random(min, max)}**`
+            `Resultado: **${random(
+              min,
+              max
+            )}**`
           )
       ]
     });
   }
 
-  if (command === "dice") {
+  // ---------------------------------------------------
+  // DICE
+  // ---------------------------------------------------
+
+  if (
+    command === "dice"
+  ) {
     return reply({
       embeds: [
-        glassEmbed(COLORS.info)
-          .setTitle("🎲  Dado")
+        glassEmbed(
+          COLORS.info
+        )
+          .setTitle(
+            "🎲  Dado"
+          )
           .setDescription(
-            `Salió **${random(1, 6)}**.`
+            `Salió **${random(
+              1,
+              6
+            )}**.`
           )
       ]
     });
   }
 
-  if (command === "choose") {
+  // ---------------------------------------------------
+  // CHOOSE
+  // ---------------------------------------------------
+
+  if (
+    command === "choose"
+  ) {
     const choices =
-      String(getString() || "")
+      String(
+        getString() || ""
+      )
         .split("|")
-        .map(value =>
-          value.trim()
+        .map(
+          value =>
+            value.trim()
         )
         .filter(Boolean);
 
-    if (choices.length < 2) {
+    if (
+      choices.length < 2
+    ) {
       return reply({
         embeds: [
           errorEmbed(
@@ -2163,7 +3021,9 @@ async function executeUserCommand(ctx) {
       });
     }
 
-    if (choices.length > 20) {
+    if (
+      choices.length > 20
+    ) {
       return reply({
         embeds: [
           errorEmbed(
@@ -2175,18 +3035,33 @@ async function executeUserCommand(ctx) {
 
     return reply({
       embeds: [
-        glassEmbed(COLORS.info)
+        glassEmbed(
+          COLORS.info
+        )
           .setTitle(
             `${E.random}  Choose`
           )
           .setDescription(
-            `Elijo: **${choices[random(0, choices.length - 1)]}**`
+            `Elijo: **${
+              choices[
+                random(
+                  0,
+                  choices.length - 1
+                )
+              ]
+            }**`
           )
       ]
     });
   }
 
-  if (command === "rps") {
+  // ---------------------------------------------------
+  // RPS
+  // ---------------------------------------------------
+
+  if (
+    command === "rps"
+  ) {
     const choice =
       String(
         getString() || ""
@@ -2198,7 +3073,11 @@ async function executeUserCommand(ctx) {
       "tijera"
     ];
 
-    if (!valid.includes(choice)) {
+    if (
+      !valid.includes(
+        choice
+      )
+    ) {
       return reply({
         embeds: [
           errorEmbed(
@@ -2218,25 +3097,47 @@ async function executeUserCommand(ctx) {
 
     let result;
 
-    if (choice === botChoice) {
-      result = "Empate.";
-    } else if (
-      (choice === "piedra" &&
-        botChoice === "tijera") ||
-      (choice === "papel" &&
-        botChoice === "piedra") ||
-      (choice === "tijera" &&
-        botChoice === "papel")
+    if (
+      choice ===
+      botChoice
     ) {
-      result = "¡Ganaste!";
+      result =
+        "Empate.";
+    } else if (
+      (
+        choice ===
+          "piedra" &&
+        botChoice ===
+          "tijera"
+      ) ||
+      (
+        choice ===
+          "papel" &&
+        botChoice ===
+          "piedra"
+      ) ||
+      (
+        choice ===
+          "tijera" &&
+        botChoice ===
+          "papel"
+      )
+    ) {
+      result =
+        "¡Ganaste!";
     } else {
-      result = "Ganó el bot.";
+      result =
+        "Ganó el bot.";
     }
 
     return reply({
       embeds: [
-        glassEmbed(COLORS.info)
-          .setTitle("◆ Piedra, papel o tijera")
+        glassEmbed(
+          COLORS.info
+        )
+          .setTitle(
+            "◆ Piedra, papel o tijera"
+          )
           .setDescription(
             `Vos: **${choice}**\n` +
             `Bot: **${botChoice}**\n\n` +
@@ -2246,9 +3147,16 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "invitever") {
+  // ---------------------------------------------------
+  // INVITEVER
+  // ---------------------------------------------------
+
+  if (
+    command === "invitever"
+  ) {
     const target =
-      getTarget() || user;
+      getTarget() ||
+      user;
 
     const stats =
       ensureInviteStats(
@@ -2265,7 +3173,9 @@ async function executeUserCommand(ctx) {
 
     return reply({
       embeds: [
-        glassEmbed(COLORS.info)
+        glassEmbed(
+          COLORS.info
+        )
           .setTitle(
             "🔗・Invitaciones"
           )
@@ -2284,7 +3194,13 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "sugerencia") {
+  // ---------------------------------------------------
+  // SUGERENCIA
+  // ---------------------------------------------------
+
+  if (
+    command === "sugerencia"
+  ) {
     const suggestion =
       getString();
 
@@ -2299,7 +3215,9 @@ async function executeUserCommand(ctx) {
     }
 
     const channelId =
-      data.settings.systemChannels.sugerencias;
+      data.settings
+        .systemChannels
+        .sugerencias;
 
     if (!channelId) {
       return reply({
@@ -2316,7 +3234,9 @@ async function executeUserCommand(ctx) {
         channelId
       );
 
-    if (!channel?.isTextBased()) {
+    if (
+      !channel?.isTextBased()
+    ) {
       return reply({
         embeds: [
           errorEmbed(
@@ -2329,12 +3249,15 @@ async function executeUserCommand(ctx) {
     const sent =
       await channel.send({
         embeds: [
-          glassEmbed(COLORS.primary)
+          glassEmbed(
+            COLORS.primary
+          )
             .setTitle(
               "💡・Nueva Sugerencia"
             )
             .setAuthor({
-              name: user.username,
+              name:
+                user.username,
               iconURL:
                 user.displayAvatarURL()
             })
@@ -2345,10 +3268,12 @@ async function executeUserCommand(ctx) {
         ]
       });
 
-    await sent.react("👍")
+    await sent
+      .react("👍")
       .catch(() => {});
 
-    await sent.react("👎")
+    await sent
+      .react("👎")
       .catch(() => {});
 
     return reply({
@@ -2360,7 +3285,13 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "ping") {
+  // ---------------------------------------------------
+  // PING
+  // ---------------------------------------------------
+
+  if (
+    command === "ping"
+  ) {
     return reply({
       embeds: [
         glassEmbed(
@@ -2376,7 +3307,13 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "botinfo") {
+  // ---------------------------------------------------
+  // BOTINFO
+  // ---------------------------------------------------
+
+  if (
+    command === "botinfo"
+  ) {
     return reply({
       embeds: [
         glassEmbed()
@@ -2393,7 +3330,13 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "serverinfo") {
+  // ---------------------------------------------------
+  // SERVERINFO
+  // ---------------------------------------------------
+
+  if (
+    command === "serverinfo"
+  ) {
     return reply({
       embeds: [
         glassEmbed()
@@ -2413,10 +3356,18 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "membercount") {
+  // ---------------------------------------------------
+  // MEMBERCOUNT
+  // ---------------------------------------------------
+
+  if (
+    command === "membercount"
+  ) {
     return reply({
       embeds: [
-        glassEmbed(COLORS.info)
+        glassEmbed(
+          COLORS.info
+        )
           .setTitle(
             "○ Miembros"
           )
@@ -2427,7 +3378,13 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "uptime") {
+  // ---------------------------------------------------
+  // UPTIME
+  // ---------------------------------------------------
+
+  if (
+    command === "uptime"
+  ) {
     const seconds =
       Math.floor(
         process.uptime()
@@ -2452,7 +3409,9 @@ async function executeUserCommand(ctx) {
 
     return reply({
       embeds: [
-        glassEmbed(COLORS.info)
+        glassEmbed(
+          COLORS.info
+        )
           .setTitle(
             `${E.time}  Uptime`
           )
@@ -2463,9 +3422,16 @@ async function executeUserCommand(ctx) {
     });
   }
 
-  if (command === "userinfo") {
+  // ---------------------------------------------------
+  // USERINFO
+  // ---------------------------------------------------
+
+  if (
+    command === "userinfo"
+  ) {
     const target =
-      getTarget() || user;
+      getTarget() ||
+      user;
 
     return reply({
       embeds: [
@@ -2481,16 +3447,23 @@ async function executeUserCommand(ctx) {
             `ID: \`${target.id}\`\n` +
             `Cuenta creada: <t:${Math.floor(
               target.createdTimestamp /
-              1000
+                1000
             )}:R>`
           )
       ]
     });
   }
 
-  if (command === "avatar") {
+  // ---------------------------------------------------
+  // AVATAR
+  // ---------------------------------------------------
+
+  if (
+    command === "avatar"
+  ) {
     const target =
-      getTarget() || user;
+      getTarget() ||
+      user;
 
     return reply({
       embeds: [
@@ -2518,9 +3491,15 @@ client.on(
   "interactionCreate",
   async interaction => {
     try {
+
+      // -------------------------------------------------
+      // BOTONES
+      // -------------------------------------------------
+
       if (
         interaction.isButton()
       ) {
+
         if (
           interaction.customId.startsWith(
             "royale_reject:"
@@ -2541,7 +3520,7 @@ client.on(
                   "Este Luck Royale no es tuyo."
                 )
               ],
-              ephemeral: true
+              flags: 64
             });
           }
 
@@ -2581,7 +3560,7 @@ client.on(
                   "Este Luck Royale no es tuyo."
                 )
               ],
-              ephemeral: true
+              flags: 64
             });
           }
 
@@ -2592,6 +3571,10 @@ client.on(
 
         return;
       }
+
+      // -------------------------------------------------
+      // SLASH
+      // -------------------------------------------------
 
       if (
         !interaction.isChatInputCommand()
@@ -2614,10 +3597,12 @@ client.on(
         interaction.commandName;
 
       const target =
-        interaction.options
-          .getUser("usuario");
+        interaction.options.getUser(
+          "usuario"
+        );
 
-      let integerValues = [];
+      let integerValues =
+        [];
 
       if (
         command === "dep" ||
@@ -2625,10 +3610,9 @@ client.on(
         command === "pay"
       ) {
         integerValues = [
-          interaction.options
-            .getInteger(
-              "cantidad"
-            )
+          interaction.options.getInteger(
+            "cantidad"
+          )
         ];
       }
 
@@ -2636,69 +3620,70 @@ client.on(
         command === "random"
       ) {
         integerValues = [
-          interaction.options
-            .getInteger("min"),
-          interaction.options
-            .getInteger("max")
+          interaction.options.getInteger(
+            "min"
+          ),
+          interaction.options.getInteger(
+            "max"
+          )
         ];
       }
 
-      let stringValue = null;
+      let stringValue =
+        null;
 
-      if (command === "buy") {
+      if (
+        command === "buy"
+      ) {
         stringValue =
-          interaction.options
-            .getString(
-              "producto"
-            );
+          interaction.options.getString(
+            "producto"
+          );
       }
 
-      if (command === "use") {
+      if (
+        command === "use"
+      ) {
         stringValue =
-          interaction.options
-            .getString(
-              "objeto"
-            );
+          interaction.options.getString(
+            "objeto"
+          );
       }
 
       if (
         command === "8ball"
       ) {
         stringValue =
-          interaction.options
-            .getString(
-              "pregunta"
-            );
+          interaction.options.getString(
+            "pregunta"
+          );
       }
 
       if (
         command === "choose"
       ) {
         stringValue =
-          interaction.options
-            .getString(
-              "opciones"
-            );
+          interaction.options.getString(
+            "opciones"
+          );
       }
 
       if (
         command === "rps"
       ) {
         stringValue =
-          interaction.options
-            .getString(
-              "eleccion"
-            );
+          interaction.options.getString(
+            "eleccion"
+          );
       }
 
       if (
         command === "sugerencia"
       ) {
         stringValue =
-          interaction.options
-            .getString(
-              "mensaje"
-            );
+          interaction.options.getString(
+            "mensaje"
+          );
       }
 
       await executeUserCommand({
@@ -2715,10 +3700,13 @@ client.on(
 
         getInteger:
           index =>
-            integerValues[index],
+            integerValues[
+              index
+            ],
 
         getString:
-          () => stringValue,
+          () =>
+            stringValue,
 
         reply:
           payload =>
@@ -2726,7 +3714,9 @@ client.on(
               payload
             )
       });
+
     } catch (error) {
+
       console.error(
         "Interaction error:",
         error
@@ -2737,14 +3727,18 @@ client.on(
         !interaction.replied &&
         !interaction.deferred
       ) {
-        await interaction.reply({
-          embeds: [
-            errorEmbed(
-              "Ocurrió un error ejecutando el comando."
-            )
-          ],
-          ephemeral: true
-        }).catch(() => {});
+        await interaction
+          .reply({
+            embeds: [
+              errorEmbed(
+                "Ocurrió un error ejecutando el comando."
+              )
+            ],
+            flags: 64
+          })
+          .catch(
+            () => {}
+          );
       }
     }
   }
@@ -2758,6 +3752,7 @@ client.on(
   "messageCreate",
   async message => {
     try {
+
       if (
         message.author.bot ||
         !message.guild
@@ -2765,13 +3760,15 @@ client.on(
         return;
       }
 
-      // ---------------------------------------------
-      // ALIANZAS / AFFYS
-      // ---------------------------------------------
+      // -----------------------------------------------
+      // ALIANZAS
+      // -----------------------------------------------
 
       if (
         message.channel.id ===
-        data.settings.systemChannels.alianzas
+        data.settings
+          .systemChannels
+          .alianzas
       ) {
         await processPartnerInvite(
           message,
@@ -2779,9 +3776,15 @@ client.on(
         );
       }
 
+      // -----------------------------------------------
+      // AFFYS
+      // -----------------------------------------------
+
       if (
         message.channel.id ===
-        data.settings.systemChannels.affys
+        data.settings
+          .systemChannels
+          .affys
       ) {
         await processPartnerInvite(
           message,
@@ -2789,9 +3792,9 @@ client.on(
         );
       }
 
-      // ---------------------------------------------
+      // -----------------------------------------------
       // PREFIX
-      // ---------------------------------------------
+      // -----------------------------------------------
 
       if (
         !message.content.startsWith(
@@ -2803,7 +3806,9 @@ client.on(
 
       const args =
         message.content
-          .slice(PREFIX.length)
+          .slice(
+            PREFIX.length
+          )
           .trim()
           .split(/\s+/);
 
@@ -2814,16 +3819,23 @@ client.on(
       const valid =
         userCommands.some(
           cmd =>
-            cmd.name === command
+            cmd.name ===
+            command
         );
 
-      if (!valid) return;
+      if (!valid) {
+        return;
+      }
 
       const target =
         message.mentions.users.first();
 
       let values =
         [...args];
+
+      // -------------------------------------------------
+      // CORRECCIÓN IMPORTANTE
+      // -------------------------------------------------
 
       if (
         target &&
@@ -2837,7 +3849,7 @@ client.on(
       const stringArgs =
         [...values];
 
-      return executeUserCommand({
+      await executeUserCommand({
         command,
 
         user:
@@ -2868,13 +3880,19 @@ client.on(
 
         getString:
           () =>
-            stringArgs.join(" "),
+            stringArgs.join(
+              " "
+            ),
 
         reply:
           payload =>
-            message.reply(payload)
+            message.reply(
+              payload
+            )
       });
+
     } catch (error) {
+
       console.error(
         "User prefix error:",
         error
@@ -2887,9 +3905,11 @@ client.on(
 // READY
 // =====================================================
 
+// Discord.js 14/15 compatible
 client.once(
-  "ready",
+  "clientReady",
   async () => {
+
     console.log(
       `✓ ${client.user.tag} conectado.`
     );
@@ -2913,6 +3933,10 @@ client.once(
   }
 );
 
+// =====================================================
+// NUEVOS SERVIDORES
+// =====================================================
+
 client.on(
   "guildCreate",
   async guild => {
@@ -2922,16 +3946,36 @@ client.on(
   }
 );
 
+// =====================================================
+// ERRORES
+// =====================================================
+
 process.on(
   "unhandledRejection",
-  console.error
+  error => {
+    console.error(
+      "Unhandled Rejection:",
+      error
+    );
+  }
 );
 
 process.on(
   "uncaughtException",
-  console.error
+  error => {
+    console.error(
+      "Uncaught Exception:",
+      error
+    );
+  }
 );
+
+// =====================================================
+// INICIO
+// =====================================================
 
 registerCommands();
 
-client.login(TOKEN);
+client.login(
+  TOKEN
+);
