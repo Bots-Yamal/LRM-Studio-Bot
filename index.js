@@ -58,9 +58,88 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildInvites
   ]
 });
+
+// =====================================================
+// PLANTILLAS
+// =====================================================
+
+const WELCOME_TEMPLATE = `👋・¡Bienvenido/a a LRM Studio!
+
+¡Hey, $(user.mention)! Nos alegra tenerte por aquí. 💫
+
+Esperamos que disfrutes tu estancia, conozcas gente nueva y formes parte de nuestra comunidad.
+
+📌 Para comenzar:
+
+📜 Lee las reglas del servidor.
+🔔 Revisa nuestros anuncios y novedades.
+🎭 Consigue tus roles.
+💬 ¡Preséntate y comienza a hablar con la comunidad!
+
+✨ Ya somos $(server.member_count) miembros en LRM Studio.
+
+¡Gracias por unirte y esperamos que la pases genial! ❤️
+
+— LRM Studio`;
+
+const INVITE_TEMPLATE = `🔗・Sistema de Invitaciones
+
+¡Gracias por ayudar a crecer a LRM Studio! 💫
+
+Invita a tus amigos y ayuda a que nuestra comunidad llegue cada vez a más personas.
+
+👤 Invitado por: $(inviter.mention)
+📨 Invitaciones: $(inviter.invites)
+👥 Miembros: $(server.member_count)
+
+⭐ Cada invitación cuenta. Comparte nuestro servidor con personas que puedan estar interesadas en formar parte de LRM Studio.
+
+¡Gracias por apoyar a la comunidad! ❤️
+— LRM Studio`;
+
+const LEVEL_TEMPLATE = `🎉・¡Subiste de Nivel!
+
+¡Felicidades $(user.mention)! ✨
+
+🏆 Nivel: $(level)
+⭐ XP: $(xp)
+📊 Rank: #$(rank)
+
+¡Sigue participando en LRM Studio! 💖`;
+
+const ALLIANCE_TEMPLATE = `🤝・Nueva Alianza
+
+Gracias $(invite.guild.name) por hacer alianza con LRM Studio. 💖
+
+👤 Hecha por: $(user.mention)
+🏆 Rank: #$(partner.rank)
+⭐ Puntos: $(partner.points)
+
+LRM Studio × $(invite.guild.name) 🤝`;
+
+const AFFY_TEMPLATE = `💞・Nuevo Affy
+
+$(user.mention) ahora es Affy de LRM Studio ✨
+
+🤝 Servidor: $(invite.guild.name)
+🏆 Rank: #$(partner.rank)
+⭐ Puntos: $(partner.points)
+
+LRM Studio × $(invite.guild.name) 💞`;
+
+const HONEYPOT_TEMPLATE = `🍯・Honeypot
+
+Este canal forma parte del sistema de seguridad de LRM Studio.
+
+⚠️ No interactúes con este canal.
+
+Cualquier interacción será detectada automáticamente y podrá activar las medidas de seguridad del servidor.
+
+🛡️ LRM Studio Security`;
 
 // =====================================================
 // DATA
@@ -77,6 +156,16 @@ const DEFAULT_DATA = {
       tienda: null,
       niveles: null,
       admin: null
+    },
+
+    systemChannels: {
+      bienvenida: null,
+      invites: null,
+      niveles: null,
+      alianzas: null,
+      affys: null,
+      sugerencias: null,
+      honeypot: null
     }
   },
 
@@ -90,13 +179,29 @@ const DEFAULT_DATA = {
       transacciones: null,
       tickets: null
     }
+  },
+
+  inviteSystem: {
+    users: {},
+    members: {}
+  },
+
+  partners: {},
+
+  moderation: {
+    warnings: {}
+  },
+
+  honeypot: {
+    message: HONEYPOT_TEMPLATE,
+    channelId: null,
+    messageId: null,
+    bans: 0
   }
 };
 
 function freshData() {
-  return JSON.parse(
-    JSON.stringify(DEFAULT_DATA)
-  );
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
 }
 
 function loadData() {
@@ -116,12 +221,15 @@ function loadData() {
       fs.readFileSync(DATA_FILE, "utf8")
     );
 
-    parsed.users ??= [];
+    parsed.users ??= {};
     parsed.shop ??= [];
 
-    // Corrección por si users viene mal.
     if (Array.isArray(parsed.users)) {
       parsed.users = {};
+    }
+
+    if (!Array.isArray(parsed.shop)) {
+      parsed.shop = [];
     }
 
     parsed.settings ??= {};
@@ -137,6 +245,20 @@ function loadData() {
       parsed.settings.logs[log] ??= null;
     }
 
+    parsed.settings.systemChannels ??= {};
+
+    for (const key of [
+      "bienvenida",
+      "invites",
+      "niveles",
+      "alianzas",
+      "affys",
+      "sugerencias",
+      "honeypot"
+    ]) {
+      parsed.settings.systemChannels[key] ??= null;
+    }
+
     parsed.ticketSystem ??= {};
     parsed.ticketSystem.panels ??= {};
     parsed.ticketSystem.staffRoles ??= {};
@@ -147,13 +269,25 @@ function loadData() {
     parsed.ticketSystem.logs.transacciones ??= null;
     parsed.ticketSystem.logs.tickets ??= null;
 
+    parsed.inviteSystem ??= {};
+    parsed.inviteSystem.users ??= {};
+    parsed.inviteSystem.members ??= {};
+
+    parsed.partners ??= {};
+
+    parsed.moderation ??= {};
+    parsed.moderation.warnings ??= {};
+
+    parsed.honeypot ??= {};
+    parsed.honeypot.message ??= HONEYPOT_TEMPLATE;
+    parsed.honeypot.channelId ??=
+      parsed.settings.systemChannels.honeypot || null;
+    parsed.honeypot.messageId ??= null;
+    parsed.honeypot.bans ??= 0;
+
     return parsed;
   } catch (error) {
-    console.error(
-      "Error leyendo data.json:",
-      error
-    );
-
+    console.error("Error leyendo data.json:", error);
     return freshData();
   }
 }
@@ -198,6 +332,10 @@ function getUser(id) {
     wins2: 0,
     wins3: 0
   };
+
+  account.luckRoyale.spins ??= 0;
+  account.luckRoyale.wins2 ??= 0;
+  account.luckRoyale.wins3 ??= 0;
 
   return account;
 }
@@ -251,12 +389,66 @@ function cooldown(account, name, duration) {
   return 0;
 }
 
-function addXP(id, amount = random(3, 8)) {
+function getLevelRank(userId) {
+  const ranking = Object.entries(data.users)
+    .sort((a, b) => {
+      const levelDifference =
+        (b[1].level || 1) - (a[1].level || 1);
+
+      if (levelDifference !== 0) {
+        return levelDifference;
+      }
+
+      return (b[1].xp || 0) - (a[1].xp || 0);
+    });
+
+  const position =
+    ranking.findIndex(([id]) => id === userId);
+
+  return position === -1
+    ? ranking.length + 1
+    : position + 1;
+}
+
+async function sendLevelUp(guild, userId, account) {
+  if (!guild) return;
+
+  const channelId =
+    data.settings.systemChannels.niveles;
+
+  if (!channelId) return;
+
+  const channel =
+    guild.channels.cache.get(channelId);
+
+  if (!channel?.isTextBased()) return;
+
+  const rank = getLevelRank(userId);
+
+  const text = LEVEL_TEMPLATE
+    .replaceAll("$(user.mention)", `<@${userId}>`)
+    .replaceAll("$(level)", String(account.level))
+    .replaceAll("$(xp)", String(account.xp))
+    .replaceAll("$(rank)", String(rank));
+
+  await channel.send({
+    embeds: [
+      glassEmbed(COLORS.level)
+        .setDescription(text)
+    ]
+  }).catch(() => {});
+}
+
+async function addXP(
+  id,
+  amount = random(3, 8),
+  guild = null
+) {
   const account = getUser(id);
 
   account.xp += amount;
 
-  let leveled = false;
+  let levelsGained = 0;
 
   while (
     account.xp >=
@@ -266,12 +458,20 @@ function addXP(id, amount = random(3, 8)) {
       account.level * 100;
 
     account.level++;
-    leveled = true;
+    levelsGained++;
   }
 
   saveData();
 
-  return leveled;
+  if (levelsGained > 0 && guild) {
+    await sendLevelUp(
+      guild,
+      id,
+      account
+    );
+  }
+
+  return levelsGained > 0;
 }
 
 // =====================================================
@@ -337,6 +537,347 @@ async function logAction(
       options
     );
   }
+}
+
+// =====================================================
+// INVITES
+// =====================================================
+
+const inviteCache = new Map();
+
+async function cacheGuildInvites(guild) {
+  const invites =
+    await guild.invites
+      .fetch()
+      .catch(() => null);
+
+  if (!invites) return;
+
+  inviteCache.set(
+    guild.id,
+    new Map(
+      invites.map(invite => [
+        invite.code,
+        invite.uses || 0
+      ])
+    )
+  );
+}
+
+function ensureInviteStats(userId) {
+  data.inviteSystem.users[userId] ??= {
+    invites: 0,
+    newAccounts: 0,
+    leaves: 0
+  };
+
+  const stats =
+    data.inviteSystem.users[userId];
+
+  stats.invites ??= 0;
+  stats.newAccounts ??= 0;
+  stats.leaves ??= 0;
+
+  return stats;
+}
+
+function isNewAccount(user) {
+  const age =
+    Date.now() -
+    user.createdTimestamp;
+
+  // Menos de 7 días.
+  return age < 7 * 24 * 60 * 60 * 1000;
+}
+
+client.on("inviteCreate", async invite => {
+  await cacheGuildInvites(invite.guild);
+});
+
+client.on("inviteDelete", async invite => {
+  await cacheGuildInvites(invite.guild);
+});
+
+client.on("guildMemberAdd", async member => {
+  const guild = member.guild;
+
+  // ---------------------------
+  // BIENVENIDA
+  // ---------------------------
+
+  const welcomeChannelId =
+    data.settings.systemChannels.bienvenida;
+
+  const welcomeChannel =
+    welcomeChannelId
+      ? guild.channels.cache.get(welcomeChannelId)
+      : null;
+
+  if (welcomeChannel?.isTextBased()) {
+    const text =
+      WELCOME_TEMPLATE
+        .replaceAll(
+          "$(user.mention)",
+          `${member}`
+        )
+        .replaceAll(
+          "$(server.member_count)",
+          String(guild.memberCount)
+        );
+
+    await welcomeChannel.send({
+      embeds: [
+        glassEmbed(COLORS.primary)
+          .setDescription(text)
+      ]
+    }).catch(() => {});
+  }
+
+  // ---------------------------
+  // DETECTAR INVITADOR
+  // ---------------------------
+
+  const before =
+    inviteCache.get(guild.id) ||
+    new Map();
+
+  const current =
+    await guild.invites
+      .fetch()
+      .catch(() => null);
+
+  if (!current) return;
+
+  const usedInvite =
+    current.find(invite => {
+      const oldUses =
+        before.get(invite.code) || 0;
+
+      return (
+        (invite.uses || 0) >
+        oldUses
+      );
+    });
+
+  inviteCache.set(
+    guild.id,
+    new Map(
+      current.map(invite => [
+        invite.code,
+        invite.uses || 0
+      ])
+    )
+  );
+
+  if (!usedInvite?.inviter) {
+    return;
+  }
+
+  const inviter =
+    usedInvite.inviter;
+
+  const stats =
+    ensureInviteStats(inviter.id);
+
+  stats.invites++;
+
+  const newAccount =
+    isNewAccount(member.user);
+
+  if (newAccount) {
+    stats.newAccounts++;
+  }
+
+  data.inviteSystem.members[member.id] = {
+    inviterId: inviter.id,
+    joinedAt: Date.now(),
+    newAccount
+  };
+
+  saveData();
+
+  // ---------------------------
+  // MENSAJE INVITES
+  // ---------------------------
+
+  const inviteChannelId =
+    data.settings.systemChannels.invites;
+
+  const inviteChannel =
+    inviteChannelId
+      ? guild.channels.cache.get(inviteChannelId)
+      : null;
+
+  if (inviteChannel?.isTextBased()) {
+    const text =
+      INVITE_TEMPLATE
+        .replaceAll(
+          "$(inviter.mention)",
+          `${inviter}`
+        )
+        .replaceAll(
+          "$(inviter.invites)",
+          String(stats.invites)
+        )
+        .replaceAll(
+          "$(server.member_count)",
+          String(guild.memberCount)
+        );
+
+    await inviteChannel.send({
+      embeds: [
+        glassEmbed(COLORS.info)
+          .setDescription(text)
+      ]
+    }).catch(() => {});
+  }
+});
+
+client.on("guildMemberRemove", member => {
+  const tracked =
+    data.inviteSystem.members[member.id];
+
+  if (!tracked?.inviterId) {
+    return;
+  }
+
+  const stats =
+    ensureInviteStats(
+      tracked.inviterId
+    );
+
+  stats.leaves++;
+
+  delete data.inviteSystem.members[
+    member.id
+  ];
+
+  saveData();
+});
+
+// =====================================================
+// PARTNERS / ALIANZAS / AFFYS
+// =====================================================
+
+function ensurePartner(userId) {
+  data.partners[userId] ??= {
+    points: 0,
+    alliances: 0,
+    affys: 0
+  };
+
+  const partner =
+    data.partners[userId];
+
+  partner.points ??= 0;
+  partner.alliances ??= 0;
+  partner.affys ??= 0;
+
+  return partner;
+}
+
+function getPartnerRank(userId) {
+  const ranking =
+    Object.entries(data.partners)
+      .sort(
+        (a, b) =>
+          (b[1].points || 0) -
+          (a[1].points || 0)
+      );
+
+  const index =
+    ranking.findIndex(
+      ([id]) => id === userId
+    );
+
+  return index === -1
+    ? ranking.length + 1
+    : index + 1;
+}
+
+function extractInviteCode(text) {
+  const match =
+    String(text).match(
+      /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|discord(?:app)?\.com\/invite\/)([A-Za-z0-9-]+)/i
+    );
+
+  return match?.[1] || null;
+}
+
+async function processPartnerInvite(
+  message,
+  type
+) {
+  const code =
+    extractInviteCode(
+      message.content
+    );
+
+  if (!code) return;
+
+  const invite =
+    await client
+      .fetchInvite(code)
+      .catch(() => null);
+
+  if (!invite?.guild) {
+    return;
+  }
+
+  const partner =
+    ensurePartner(
+      message.author.id
+    );
+
+  partner.points++;
+
+  if (type === "alianza") {
+    partner.alliances++;
+  } else {
+    partner.affys++;
+  }
+
+  saveData();
+
+  const rank =
+    getPartnerRank(
+      message.author.id
+    );
+
+  const template =
+    type === "alianza"
+      ? ALLIANCE_TEMPLATE
+      : AFFY_TEMPLATE;
+
+  const text =
+    template
+      .replaceAll(
+        "$(invite.guild.name)",
+        invite.guild.name || "Servidor"
+      )
+      .replaceAll(
+        "$(user.mention)",
+        `${message.author}`
+      )
+      .replaceAll(
+        "$(partner.rank)",
+        String(rank)
+      )
+      .replaceAll(
+        "$(partner.points)",
+        String(partner.points)
+      );
+
+  await message.reply({
+    embeds: [
+      glassEmbed(
+        type === "alianza"
+          ? COLORS.primary
+          : COLORS.royale
+      )
+        .setDescription(text)
+    ]
+  }).catch(() => {});
 }
 
 // =====================================================
@@ -495,7 +1036,6 @@ async function startRoyale(interaction) {
     components: []
   });
 
-  // Animación
   for (let i = 0; i < 8; i++) {
     await new Promise(
       resolve =>
@@ -568,17 +1108,17 @@ async function startRoyale(interaction) {
   } else {
     resultText =
       `${E.loss} **Sin premio**\n\n` +
-      `Los 3 símbolos fueron diferentes.\n\n` +
-      `Puedes volver a intentarlo después del cooldown.`;
+      `Los 3 símbolos fueron diferentes.`;
   }
 
-  addXP(
+  await addXP(
     user.id,
     result === "triple"
       ? 15
       : result === "double"
         ? 8
-        : 3
+        : 3,
+    interaction.guild
   );
 
   saveData();
@@ -605,187 +1145,127 @@ async function startRoyale(interaction) {
 }
 
 // =====================================================
-// SLASH COMMANDS
+// SLASH COMMANDS USER
 // =====================================================
 
 const userCommands = [
   new SlashCommandBuilder()
+    .setName("help")
+    .setDescription("Muestra los comandos."),
+
+  new SlashCommandBuilder()
     .setName("balance")
-    .setDescription(
-      "Consulta tu balance."
-    )
+    .setDescription("Consulta un balance.")
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
+        .setDescription("Usuario")
     ),
 
   new SlashCommandBuilder()
     .setName("work")
-    .setDescription(
-      "Trabaja y consigue dinero."
-    ),
-
-  new SlashCommandBuilder()
-    .setName("risk")
-    .setDescription(
-      "Comando de economía con riesgo."
-    ),
-
-  new SlashCommandBuilder()
-    .setName("crime")
-    .setDescription(
-      "Comando de economía con riesgo."
-    ),
+    .setDescription("Trabaja y consigue dinero."),
 
   new SlashCommandBuilder()
     .setName("daily")
-    .setDescription(
-      "Recompensa diaria."
-    ),
+    .setDescription("Recompensa diaria."),
 
   new SlashCommandBuilder()
     .setName("dep")
-    .setDescription(
-      "Deposita dinero."
-    )
+    .setDescription("Deposita dinero.")
     .addIntegerOption(o =>
       o.setName("cantidad")
-        .setDescription(
-          "Cantidad"
-        )
+        .setDescription("Cantidad")
         .setMinValue(1)
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("with")
-    .setDescription(
-      "Retira dinero."
-    )
+    .setDescription("Retira dinero.")
     .addIntegerOption(o =>
       o.setName("cantidad")
-        .setDescription(
-          "Cantidad"
-        )
+        .setDescription("Cantidad")
         .setMinValue(1)
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("pay")
-    .setDescription(
-      "Envía dinero."
-    )
+    .setDescription("Envía dinero.")
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
+        .setDescription("Usuario")
         .setRequired(true)
     )
     .addIntegerOption(o =>
       o.setName("cantidad")
-        .setDescription(
-          "Cantidad"
-        )
+        .setDescription("Cantidad")
         .setMinValue(1)
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("profile")
-    .setDescription(
-      "Muestra un perfil."
-    )
+    .setDescription("Muestra un perfil.")
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
+        .setDescription("Usuario")
     ),
 
   new SlashCommandBuilder()
     .setName("inventory")
-    .setDescription(
-      "Muestra tu inventario."
-    ),
+    .setDescription("Muestra tu inventario."),
 
   new SlashCommandBuilder()
     .setName("rank")
-    .setDescription(
-      "Muestra tu nivel."
-    ),
+    .setDescription("Muestra tu nivel."),
 
   new SlashCommandBuilder()
     .setName("shop")
-    .setDescription(
-      "Muestra la tienda."
-    ),
+    .setDescription("Muestra la tienda."),
 
   new SlashCommandBuilder()
     .setName("buy")
-    .setDescription(
-      "Compra un objeto."
-    )
+    .setDescription("Compra un objeto.")
     .addStringOption(o =>
       o.setName("producto")
-        .setDescription(
-          "Producto"
-        )
+        .setDescription("Producto")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("use")
-    .setDescription(
-      "Usa un objeto."
-    )
+    .setDescription("Usa un objeto.")
     .addStringOption(o =>
       o.setName("objeto")
-        .setDescription(
-          "Objeto"
-        )
+        .setDescription("Objeto")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("baltop")
-    .setDescription(
-      "Ranking de dinero."
-    ),
+    .setDescription("Ranking de dinero."),
 
   new SlashCommandBuilder()
     .setName("leveltop")
-    .setDescription(
-      "Ranking de niveles."
-    ),
+    .setDescription("Ranking de niveles."),
 
   new SlashCommandBuilder()
     .setName("coinflip")
-    .setDescription(
-      "Cara o cruz."
-    ),
+    .setDescription("Cara o cruz."),
 
   new SlashCommandBuilder()
     .setName("8ball")
-    .setDescription(
-      "Pregunta a la bola."
-    )
+    .setDescription("Pregunta a la bola.")
     .addStringOption(o =>
       o.setName("pregunta")
-        .setDescription(
-          "Pregunta"
-        )
+        .setDescription("Pregunta")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("random")
-    .setDescription(
-      "Genera un número aleatorio."
-    )
+    .setDescription("Genera un número aleatorio.")
     .addIntegerOption(o =>
       o.setName("min")
         .setDescription("Mínimo")
@@ -798,51 +1278,97 @@ const userCommands = [
     ),
 
   new SlashCommandBuilder()
+    .setName("dice")
+    .setDescription("Lanza un dado."),
+
+  new SlashCommandBuilder()
+    .setName("choose")
+    .setDescription("Elige entre varias opciones.")
+    .addStringOption(o =>
+      o.setName("opciones")
+        .setDescription("Ejemplo: Minecraft | Sonic | Rocket League")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("rps")
+    .setDescription("Piedra, papel o tijera.")
+    .addStringOption(o =>
+      o.setName("eleccion")
+        .setDescription("Tu elección")
+        .setRequired(true)
+        .addChoices(
+          {
+            name: "Piedra",
+            value: "piedra"
+          },
+          {
+            name: "Papel",
+            value: "papel"
+          },
+          {
+            name: "Tijera",
+            value: "tijera"
+          }
+        )
+    ),
+
+  new SlashCommandBuilder()
     .setName("luckroyale")
-    .setDescription(
-      "Juega Luck Royale."
+    .setDescription("Juega Luck Royale."),
+
+  new SlashCommandBuilder()
+    .setName("invitever")
+    .setDescription("Muestra tus estadísticas de invitaciones.")
+    .addUserOption(o =>
+      o.setName("usuario")
+        .setDescription("Usuario")
+    ),
+
+  new SlashCommandBuilder()
+    .setName("sugerencia")
+    .setDescription("Envía una sugerencia.")
+    .addStringOption(o =>
+      o.setName("mensaje")
+        .setDescription("Sugerencia")
+        .setMaxLength(1500)
+        .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("ping")
-    .setDescription(
-      "Muestra el ping."
-    ),
+    .setDescription("Muestra el ping."),
 
   new SlashCommandBuilder()
     .setName("botinfo")
-    .setDescription(
-      "Información del bot."
-    ),
+    .setDescription("Información del bot."),
 
   new SlashCommandBuilder()
     .setName("serverinfo")
-    .setDescription(
-      "Información del servidor."
-    ),
+    .setDescription("Información del servidor."),
+
+  new SlashCommandBuilder()
+    .setName("membercount")
+    .setDescription("Muestra la cantidad de miembros."),
+
+  new SlashCommandBuilder()
+    .setName("uptime")
+    .setDescription("Muestra el tiempo encendido."),
 
   new SlashCommandBuilder()
     .setName("userinfo")
-    .setDescription(
-      "Información de usuario."
-    )
+    .setDescription("Información de usuario.")
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
+        .setDescription("Usuario")
     ),
 
   new SlashCommandBuilder()
     .setName("avatar")
-    .setDescription(
-      "Muestra un avatar."
-    )
+    .setDescription("Muestra un avatar.")
     .addUserOption(o =>
       o.setName("usuario")
-        .setDescription(
-          "Usuario"
-        )
+        .setDescription("Usuario")
     )
 ];
 
@@ -923,6 +1449,34 @@ async function executeUserCommand(ctx) {
     reply
   } = ctx;
 
+  if (command === "help") {
+    return reply({
+      embeds: [
+        glassEmbed()
+          .setTitle("◉ LRM Studio • Help")
+          .setDescription(
+            `### ${E.money} Economía\n` +
+            "`balance` `work` `daily` `dep` `with` `pay`\n" +
+            "`shop` `buy` `use` `baltop`\n\n" +
+
+            `### ${E.user} Perfil\n` +
+            "`profile` `inventory` `rank` `leveltop`\n\n" +
+
+            `### ${E.random} Diversión\n` +
+            "`coinflip` `8ball` `random` `dice` `choose` `rps` `luckroyale`\n\n" +
+
+            "### 🔗 Comunidad\n" +
+            "`invitever` `sugerencia`\n\n" +
+
+            `### ${E.info} Información\n` +
+            "`ping` `botinfo` `serverinfo` `membercount` `uptime` `userinfo` `avatar`\n\n" +
+
+            "Todos están disponibles con **.** y **/** cuando corresponde."
+          )
+      ]
+    });
+  }
+
   if (command === "luckroyale") {
     return reply(
       royaleWarning(
@@ -990,7 +1544,12 @@ async function executeUserCommand(ctx) {
 
     account.wallet += reward;
 
-    addXP(user.id);
+    await addXP(
+      user.id,
+      random(3, 8),
+      guild
+    );
+
     saveData();
 
     return reply({
@@ -999,138 +1558,6 @@ async function executeUserCommand(ctx) {
           `Ganaste **${money(reward)}** trabajando.\n\n` +
           `Wallet: **${money(account.wallet)}**`
         )
-      ]
-    });
-  }
-
-  if (command === "risk") {
-    const account =
-      getUser(user.id);
-
-    const remaining =
-      cooldown(
-        account,
-        "risk",
-        60_000
-      );
-
-    if (remaining) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            `Espera **${Math.ceil(
-              remaining / 1000
-            )}s**.`
-          )
-        ]
-      });
-    }
-
-    const won =
-      random(1, 100) <= 30;
-
-    if (won) {
-      const reward =
-        random(40, 70);
-
-      account.wallet += reward;
-
-      addXP(user.id);
-      saveData();
-
-      return reply({
-        embeds: [
-          successEmbed(
-            `Conseguiste **${money(reward)}**.\n\n` +
-            `Wallet: **${money(account.wallet)}**`
-          )
-        ]
-      });
-    }
-
-    const loss =
-      random(50, 100);
-
-    account.wallet -= loss;
-
-    saveData();
-
-    return reply({
-      embeds: [
-        glassEmbed(COLORS.error)
-          .setTitle(
-            `${E.loss} Fallaste`
-          )
-          .setDescription(
-            `Perdiste **${money(loss)}**.\n\n` +
-            `Wallet: **${money(account.wallet)}**`
-          )
-      ]
-    });
-  }
-
-  if (command === "crime") {
-    const account =
-      getUser(user.id);
-
-    const remaining =
-      cooldown(
-        account,
-        "crime",
-        120_000
-      );
-
-    if (remaining) {
-      return reply({
-        embeds: [
-          errorEmbed(
-            `Espera **${Math.ceil(
-              remaining / 1000
-            )}s**.`
-          )
-        ]
-      });
-    }
-
-    const won =
-      random(1, 100) <= 20;
-
-    if (won) {
-      const reward =
-        random(50, 80);
-
-      account.wallet += reward;
-
-      addXP(user.id);
-      saveData();
-
-      return reply({
-        embeds: [
-          successEmbed(
-            `Conseguiste **${money(reward)}**.\n\n` +
-            `Wallet: **${money(account.wallet)}**`
-          )
-        ]
-      });
-    }
-
-    const loss =
-      random(70, 200);
-
-    account.wallet -= loss;
-
-    saveData();
-
-    return reply({
-      embeds: [
-        glassEmbed(COLORS.error)
-          .setTitle(
-            `${E.loss} Fallaste`
-          )
-          .setDescription(
-            `Perdiste **${money(loss)}**.\n\n` +
-            `Wallet: **${money(account.wallet)}**`
-          )
       ]
     });
   }
@@ -1150,7 +1577,7 @@ async function executeUserCommand(ctx) {
       return reply({
         embeds: [
           errorEmbed(
-            `Tu daily todavía no está disponible.`
+            "Tu daily todavía no está disponible."
           )
         ]
       });
@@ -1158,7 +1585,12 @@ async function executeUserCommand(ctx) {
 
     account.wallet += 50;
 
-    addXP(user.id, 5);
+    await addXP(
+      user.id,
+      5,
+      guild
+    );
+
     saveData();
 
     return reply({
@@ -1238,8 +1670,11 @@ async function executeUserCommand(ctx) {
     const target =
       getTarget();
 
+    // CORREGIDO:
+    // el usuario mencionado ya se elimina de los args
+    // en prefix, así que la cantidad está en posición 0.
     const amount =
-      getInteger(1);
+      getInteger(0);
 
     if (
       !target ||
@@ -1322,6 +1757,7 @@ async function executeUserCommand(ctx) {
             `${E.bank} Banco: **${money(account.bank)}**\n` +
             `${E.level} Nivel: **${account.level}**\n` +
             `XP: **${account.xp}/${account.level * 100}**\n` +
+            `Rank: **#${getLevelRank(target.id)}**\n` +
             `${E.inventory} Objetos: **${account.inventory.length}**`
           )
       ]
@@ -1364,7 +1800,8 @@ async function executeUserCommand(ctx) {
           )
           .setDescription(
             `Nivel **${account.level}**\n\n` +
-            `XP **${account.xp}/${account.level * 100}**`
+            `XP **${account.xp}/${account.level * 100}**\n` +
+            `Rank global **#${getLevelRank(user.id)}**`
           )
       ]
     });
@@ -1428,9 +1865,6 @@ async function executeUserCommand(ctx) {
       });
     }
 
-    account.wallet -=
-      product.price;
-
     if (
       product.type === "role" &&
       product.roleId
@@ -1450,10 +1884,24 @@ async function executeUserCommand(ctx) {
         });
       }
 
-      await member.roles
-        .add(role)
-        .catch(() => {});
+      try {
+        await member.roles.add(role);
+      } catch {
+        return reply({
+          embeds: [
+            errorEmbed(
+              "No pude darte ese rol. Revisa la jerarquía de roles del bot."
+            )
+          ]
+        });
+      }
+
+      account.wallet -=
+        product.price;
     } else {
+      account.wallet -=
+        product.price;
+
       account.inventory.push(
         product.name
       );
@@ -1481,7 +1929,7 @@ async function executeUserCommand(ctx) {
       account.inventory
         .findIndex(
           item =>
-            item.toLowerCase() ===
+            String(item).toLowerCase() ===
             itemName?.toLowerCase()
         );
 
@@ -1522,12 +1970,12 @@ async function executeUserCommand(ctx) {
         .sort(
           (a, b) =>
             (
-              b[1].wallet +
-              b[1].bank
+              (b[1].wallet || 0) +
+              (b[1].bank || 0)
             ) -
             (
-              a[1].wallet +
-              a[1].bank
+              (a[1].wallet || 0) +
+              (a[1].bank || 0)
             )
         )
         .slice(0, 10);
@@ -1545,8 +1993,8 @@ async function executeUserCommand(ctx) {
               ? top.map(
                   ([id, account], index) =>
                     `**${index + 1}.** <@${id}> • **${money(
-                      account.wallet +
-                      account.bank
+                      (account.wallet || 0) +
+                      (account.bank || 0)
                     )}**`
                 ).join("\n")
               : "No hay datos."
@@ -1562,8 +2010,10 @@ async function executeUserCommand(ctx) {
       )
         .sort(
           (a, b) =>
-            b[1].level -
-            a[1].level
+            (b[1].level || 1) -
+              (a[1].level || 1) ||
+            (b[1].xp || 0) -
+              (a[1].xp || 0)
         )
         .slice(0, 10);
 
@@ -1579,7 +2029,7 @@ async function executeUserCommand(ctx) {
             top.length
               ? top.map(
                   ([id, account], index) =>
-                    `**${index + 1}.** <@${id}> • Nivel **${account.level}**`
+                    `**${index + 1}.** <@${id}> • Nivel **${account.level || 1}** • XP **${account.xp || 0}**`
                 ).join("\n")
               : "No hay datos."
           )
@@ -1682,6 +2132,234 @@ async function executeUserCommand(ctx) {
     });
   }
 
+  if (command === "dice") {
+    return reply({
+      embeds: [
+        glassEmbed(COLORS.info)
+          .setTitle("🎲  Dado")
+          .setDescription(
+            `Salió **${random(1, 6)}**.`
+          )
+      ]
+    });
+  }
+
+  if (command === "choose") {
+    const choices =
+      String(getString() || "")
+        .split("|")
+        .map(value =>
+          value.trim()
+        )
+        .filter(Boolean);
+
+    if (choices.length < 2) {
+      return reply({
+        embeds: [
+          errorEmbed(
+            "Escribe al menos 2 opciones separadas por `|`."
+          )
+        ]
+      });
+    }
+
+    if (choices.length > 20) {
+      return reply({
+        embeds: [
+          errorEmbed(
+            "Máximo 20 opciones."
+          )
+        ]
+      });
+    }
+
+    return reply({
+      embeds: [
+        glassEmbed(COLORS.info)
+          .setTitle(
+            `${E.random}  Choose`
+          )
+          .setDescription(
+            `Elijo: **${choices[random(0, choices.length - 1)]}**`
+          )
+      ]
+    });
+  }
+
+  if (command === "rps") {
+    const choice =
+      String(
+        getString() || ""
+      ).toLowerCase();
+
+    const valid = [
+      "piedra",
+      "papel",
+      "tijera"
+    ];
+
+    if (!valid.includes(choice)) {
+      return reply({
+        embeds: [
+          errorEmbed(
+            "Elige `piedra`, `papel` o `tijera`."
+          )
+        ]
+      });
+    }
+
+    const botChoice =
+      valid[
+        random(
+          0,
+          valid.length - 1
+        )
+      ];
+
+    let result;
+
+    if (choice === botChoice) {
+      result = "Empate.";
+    } else if (
+      (choice === "piedra" &&
+        botChoice === "tijera") ||
+      (choice === "papel" &&
+        botChoice === "piedra") ||
+      (choice === "tijera" &&
+        botChoice === "papel")
+    ) {
+      result = "¡Ganaste!";
+    } else {
+      result = "Ganó el bot.";
+    }
+
+    return reply({
+      embeds: [
+        glassEmbed(COLORS.info)
+          .setTitle("◆ Piedra, papel o tijera")
+          .setDescription(
+            `Vos: **${choice}**\n` +
+            `Bot: **${botChoice}**\n\n` +
+            `**${result}**`
+          )
+      ]
+    });
+  }
+
+  if (command === "invitever") {
+    const target =
+      getTarget() || user;
+
+    const stats =
+      ensureInviteStats(
+        target.id
+      );
+
+    const validTotal =
+      Math.max(
+        0,
+        stats.invites -
+          stats.newAccounts -
+          stats.leaves
+      );
+
+    return reply({
+      embeds: [
+        glassEmbed(COLORS.info)
+          .setTitle(
+            "🔗・Invitaciones"
+          )
+          .setThumbnail(
+            target.displayAvatarURL()
+          )
+          .setDescription(
+            `${target}\n\n` +
+            `📨 Invites: **${stats.invites}**\n` +
+            `🆕 Cuentas nuevas: **${stats.newAccounts}**\n` +
+            `🚪 Salidas: **${stats.leaves}**\n` +
+            `⭐ Total válido: **${validTotal}**\n\n` +
+            `*Total válido no incluye cuentas nuevas ni usuarios que salieron.*`
+          )
+      ]
+    });
+  }
+
+  if (command === "sugerencia") {
+    const suggestion =
+      getString();
+
+    if (!suggestion) {
+      return reply({
+        embeds: [
+          errorEmbed(
+            "Escribe tu sugerencia."
+          )
+        ]
+      });
+    }
+
+    const channelId =
+      data.settings.systemChannels.sugerencias;
+
+    if (!channelId) {
+      return reply({
+        embeds: [
+          errorEmbed(
+            "El sistema de sugerencias todavía no está configurado."
+          )
+        ]
+      });
+    }
+
+    const channel =
+      guild.channels.cache.get(
+        channelId
+      );
+
+    if (!channel?.isTextBased()) {
+      return reply({
+        embeds: [
+          errorEmbed(
+            "El canal de sugerencias configurado ya no existe."
+          )
+        ]
+      });
+    }
+
+    const sent =
+      await channel.send({
+        embeds: [
+          glassEmbed(COLORS.primary)
+            .setTitle(
+              "💡・Nueva Sugerencia"
+            )
+            .setAuthor({
+              name: user.username,
+              iconURL:
+                user.displayAvatarURL()
+            })
+            .setDescription(
+              suggestion
+            )
+            .setTimestamp()
+        ]
+      });
+
+    await sent.react("👍")
+      .catch(() => {});
+
+    await sent.react("👎")
+      .catch(() => {});
+
+    return reply({
+      embeds: [
+        successEmbed(
+          `Tu sugerencia fue enviada en ${channel}.`
+        )
+      ]
+    });
+  }
+
   if (command === "ping") {
     return reply({
       embeds: [
@@ -1707,7 +2385,7 @@ async function executeUserCommand(ctx) {
           )
           .setDescription(
             `Servidores: **${client.guilds.cache.size}**\n` +
-            `Usuarios: **${client.users.cache.size}**\n` +
+            `Usuarios en caché: **${client.users.cache.size}**\n` +
             `Prefix: **.** + **/**\n` +
             `Node: **${process.version}**`
           )
@@ -1730,6 +2408,56 @@ async function executeUserCommand(ctx) {
             `Miembros: **${guild.memberCount}**\n` +
             `Canales: **${guild.channels.cache.size}**\n` +
             `Roles: **${guild.roles.cache.size}**`
+          )
+      ]
+    });
+  }
+
+  if (command === "membercount") {
+    return reply({
+      embeds: [
+        glassEmbed(COLORS.info)
+          .setTitle(
+            "○ Miembros"
+          )
+          .setDescription(
+            `Actualmente somos **${guild.memberCount} miembros** en **${guild.name}**.`
+          )
+      ]
+    });
+  }
+
+  if (command === "uptime") {
+    const seconds =
+      Math.floor(
+        process.uptime()
+      );
+
+    const days =
+      Math.floor(
+        seconds / 86400
+      );
+
+    const hours =
+      Math.floor(
+        (seconds % 86400) /
+        3600
+      );
+
+    const minutes =
+      Math.floor(
+        (seconds % 3600) /
+        60
+      );
+
+    return reply({
+      embeds: [
+        glassEmbed(COLORS.info)
+          .setTitle(
+            `${E.time}  Uptime`
+          )
+          .setDescription(
+            `**${days}d ${hours}h ${minutes}m**`
           )
       ]
     });
@@ -1790,7 +2518,6 @@ client.on(
   "interactionCreate",
   async interaction => {
     try {
-      // BOTONES LUCK ROYALE
       if (
         interaction.isButton()
       ) {
@@ -1894,19 +2621,10 @@ client.on(
 
       if (
         command === "dep" ||
-        command === "with"
+        command === "with" ||
+        command === "pay"
       ) {
         integerValues = [
-          interaction.options
-            .getInteger(
-              "cantidad"
-            )
-        ];
-      }
-
-      if (command === "pay") {
-        integerValues = [
-          null,
           interaction.options
             .getInteger(
               "cantidad"
@@ -1953,6 +2671,36 @@ client.on(
             );
       }
 
+      if (
+        command === "choose"
+      ) {
+        stringValue =
+          interaction.options
+            .getString(
+              "opciones"
+            );
+      }
+
+      if (
+        command === "rps"
+      ) {
+        stringValue =
+          interaction.options
+            .getString(
+              "eleccion"
+            );
+      }
+
+      if (
+        command === "sugerencia"
+      ) {
+        stringValue =
+          interaction.options
+            .getString(
+              "mensaje"
+            );
+      }
+
       await executeUserCommand({
         command,
         user:
@@ -1983,107 +2731,155 @@ client.on(
         "Interaction error:",
         error
       );
+
+      if (
+        interaction.isRepliable() &&
+        !interaction.replied &&
+        !interaction.deferred
+      ) {
+        await interaction.reply({
+          embeds: [
+            errorEmbed(
+              "Ocurrió un error ejecutando el comando."
+            )
+          ],
+          ephemeral: true
+        }).catch(() => {});
+      }
     }
   }
 );
 
 // =====================================================
-// PREFIX
+// MESSAGE CREATE
 // =====================================================
 
 client.on(
   "messageCreate",
   async message => {
-    if (
-      message.author.bot ||
-      !message.guild ||
-      !message.content.startsWith(
-        PREFIX
-      )
-    ) {
-      return;
-    }
+    try {
+      if (
+        message.author.bot ||
+        !message.guild
+      ) {
+        return;
+      }
 
-    const args =
-      message.content
-        .slice(PREFIX.length)
-        .trim()
-        .split(/\s+/);
+      // ---------------------------------------------
+      // ALIANZAS / AFFYS
+      // ---------------------------------------------
 
-    const command =
-      args.shift()
-        ?.toLowerCase();
+      if (
+        message.channel.id ===
+        data.settings.systemChannels.alianzas
+      ) {
+        await processPartnerInvite(
+          message,
+          "alianza"
+        );
+      }
 
-    const valid =
-      userCommands.some(
-        cmd =>
-          cmd.name === command
-      );
+      if (
+        message.channel.id ===
+        data.settings.systemChannels.affys
+      ) {
+        await processPartnerInvite(
+          message,
+          "affy"
+        );
+      }
 
-    if (!valid) return;
+      // ---------------------------------------------
+      // PREFIX
+      // ---------------------------------------------
 
-    const target =
-      message.mentions.users.first();
+      if (
+        !message.content.startsWith(
+          PREFIX
+        )
+      ) {
+        return;
+      }
 
-    let stringArgs = [...args];
+      const args =
+        message.content
+          .slice(PREFIX.length)
+          .trim()
+          .split(/\s+/);
 
-    if (
-      target &&
-      stringArgs[0]?.includes(
-        target.id
-      )
-    ) {
-      stringArgs.shift();
-    }
+      const command =
+        args.shift()
+          ?.toLowerCase();
 
-    return executeUserCommand({
-      command,
+      const valid =
+        userCommands.some(
+          cmd =>
+            cmd.name === command
+        );
 
-      user:
-        message.author,
+      if (!valid) return;
 
-      guild:
-        message.guild,
+      const target =
+        message.mentions.users.first();
 
-      member:
-        message.member,
+      let values =
+        [...args];
 
-      getTarget:
-        () => target,
+      if (
+        target &&
+        values[0]?.includes(
+          target.id
+        )
+      ) {
+        values.shift();
+      }
 
-      getInteger:
-        index => {
-          let values = [...args];
+      const stringArgs =
+        [...values];
 
-          if (
-            target &&
-            values[0]?.includes(
-              target.id
+      return executeUserCommand({
+        command,
+
+        user:
+          message.author,
+
+        guild:
+          message.guild,
+
+        member:
+          message.member,
+
+        getTarget:
+          () => target,
+
+        getInteger:
+          index => {
+            const value =
+              Number(
+                values[index]
+              );
+
+            return Number.isInteger(
+              value
             )
-          ) {
-            values.shift();
-          }
+              ? value
+              : null;
+          },
 
-          const value =
-            Number(
-              values[index]
-            );
+        getString:
+          () =>
+            stringArgs.join(" "),
 
-          return Number.isInteger(
-            value
-          )
-            ? value
-            : null;
-        },
-
-      getString:
-        () =>
-          stringArgs.join(" "),
-
-      reply:
-        payload =>
-          message.reply(payload)
-    });
+        reply:
+          payload =>
+            message.reply(payload)
+      });
+    } catch (error) {
+      console.error(
+        "User prefix error:",
+        error
+      );
+    }
   }
 );
 
@@ -2093,13 +2889,35 @@ client.on(
 
 client.once(
   "ready",
-  () => {
+  async () => {
     console.log(
       `✓ ${client.user.tag} conectado.`
     );
 
     client.user.setActivity(
       "LRM Studio • .help"
+    );
+
+    for (
+      const guild
+      of client.guilds.cache.values()
+    ) {
+      await cacheGuildInvites(
+        guild
+      );
+    }
+
+    console.log(
+      "✓ Caché de invitaciones cargada."
+    );
+  }
+);
+
+client.on(
+  "guildCreate",
+  async guild => {
+    await cacheGuildInvites(
+      guild
     );
   }
 );
@@ -2115,4 +2933,5 @@ process.on(
 );
 
 registerCommands();
+
 client.login(TOKEN);
