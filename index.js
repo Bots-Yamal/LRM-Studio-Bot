@@ -167,10 +167,14 @@ Cualquier interacción será detectada automáticamente y podrá activar las med
 const DEFAULT_DATA = {
   users: {},
   shop: {},
+
   settings: {
     logs: {},
     systemChannels: {}
   },
+
+  guildSettings: {},
+
   ticketSystem: {},
   inviteSystem: {},
   partners: {},
@@ -197,9 +201,13 @@ function loadData() {
 
     data.users ??= {};
     data.shop ??= {};
+
     data.settings ??= {};
     data.settings.logs ??= {};
     data.settings.systemChannels ??= {};
+
+    data.guildSettings ??= {};
+
     data.ticketSystem ??= {};
     data.inviteSystem ??= {};
     data.partners ??= {};
@@ -241,6 +249,38 @@ function saveData() {
 }
 
 // ======================================================
+// CONFIGURACIÓN POR SERVIDOR
+// ======================================================
+
+function getGuildSettings(guildId) {
+
+  data.guildSettings ??= {};
+
+  data.guildSettings[guildId] ??= {
+    welcomeChannel: null,
+    inviteChannel: null,
+    levelChannel: null,
+    allianceChannel: null,
+    affysChannel: null,
+    suggestionChannel: null,
+    honeypotChannel: null
+  };
+
+  const settings =
+    data.guildSettings[guildId];
+
+  settings.welcomeChannel ??= null;
+  settings.inviteChannel ??= null;
+  settings.levelChannel ??= null;
+  settings.allianceChannel ??= null;
+  settings.affysChannel ??= null;
+  settings.suggestionChannel ??= null;
+  settings.honeypotChannel ??= null;
+
+  return settings;
+}
+
+// ======================================================
 // USUARIOS
 // ======================================================
 
@@ -255,6 +295,7 @@ function getUser(id) {
       xp: 0,
       level: 1,
       cooldowns: {},
+
       luckRoyale: {
         spins: 0,
         wins2: 0,
@@ -283,17 +324,22 @@ function getUser(id) {
 }
 
 // ======================================================
-// UTILIDADES GENERALES
+// UTILIDADES
 // ======================================================
 
 function random(min, max) {
 
   return Math.floor(
-    Math.random() * (max - min + 1)
+    Math.random() *
+      (max - min + 1)
   ) + min;
 }
 
-function cooldown(user, key, seconds) {
+function cooldown(
+  user,
+  key,
+  seconds
+) {
 
   const now = Date.now();
 
@@ -339,7 +385,8 @@ function glassEmbed({
   if (footer) {
 
     embed.setFooter({
-      text: "LRM Studio  •  Fluent Glass"
+      text:
+        "LRM Studio  •  Fluent Glass"
     });
   }
 
@@ -349,44 +396,46 @@ function glassEmbed({
 function errorEmbed(description) {
 
   return glassEmbed({
-    title: `${E.error} Error`,
+    title:
+      `${E.error} Error`,
     description,
-    color: COLORS.error
+    color:
+      COLORS.error
   });
 }
 
 function successEmbed(description) {
 
   return glassEmbed({
-    title: `${E.success} Completado`,
+    title:
+      `${E.success} Completado`,
     description,
-    color: COLORS.success
+    color:
+      COLORS.success
   });
 }
 
 // ======================================================
-// XP / NIVELES
+// XP
 // ======================================================
 
 function xpNeeded(level) {
-
   return level * 100;
 }
 
 function getRank(guild) {
 
-  const members =
-    Object.entries(data.users)
-      .map(([id, user]) => ({
-        id,
-        xp: user.xp || 0
-      }))
-      .sort(
-        (a, b) =>
-          b.xp - a.xp
-      );
-
-  return members;
+  return Object.entries(
+    data.users
+  )
+    .map(([id, user]) => ({
+      id,
+      xp: user.xp || 0
+    }))
+    .sort(
+      (a, b) =>
+        b.xp - a.xp
+    );
 }
 
 function addXP(
@@ -419,7 +468,8 @@ function addXP(
 
   return {
     leveledUp,
-    level: user.level
+    level:
+      user.level
   };
 }
 
@@ -493,9 +543,7 @@ async function logAction(
 const inviteCache =
   new Map();
 
-async function cacheInvites(
-  guild
-) {
+async function cacheInvites(guild) {
 
   try {
 
@@ -707,7 +755,7 @@ async function runLuckRoyale(
   user.luckRoyale.spins++;
 
   const message =
-    await interaction.message;
+    interaction.message;
 
   const row =
     new ActionRowBuilder()
@@ -1230,13 +1278,12 @@ const userCommands = [
           .setDescription(
             "Usuario"
           )
-          .setRequired(false
-          )
+          .setRequired(false)
     )
 ];
 
 // ======================================================
-// REGISTRO DE COMANDOS
+// REGISTRO
 // ======================================================
 
 const allCommands = [
@@ -1261,7 +1308,7 @@ const commands =
   );
 
 // ======================================================
-// DEPENDENCIAS DEL ADMIN
+// ADMIN
 // ======================================================
 
 setupAdmin({
@@ -1283,7 +1330,8 @@ setupAdmin({
 function utilitiesEmbed() {
 
   return glassEmbed({
-    title: "🛠️ Utilidades",
+    title:
+      "🛠️ Utilidades",
 
     description:
       "Selecciona una utilidad del menú para usarla.\n\n" +
@@ -1294,7 +1342,8 @@ function utilitiesEmbed() {
 
     fields: [
       {
-        name: "📊 Información",
+        name:
+          "📊 Información",
         value:
           "🏓 Ping\n" +
           "🤖 Bot Info\n" +
@@ -1305,7 +1354,8 @@ function utilitiesEmbed() {
       },
 
       {
-        name: "👤 Usuario",
+        name:
+          "👤 Usuario",
         value:
           "👤 User Info\n" +
           "🖼️ Avatar\n" +
@@ -1314,7 +1364,8 @@ function utilitiesEmbed() {
       },
 
       {
-        name: "🎮 Diversión",
+        name:
+          "🎮 Diversión",
         value:
           "🎲 Random\n" +
           "🎲 Dado\n" +
@@ -1342,107 +1393,146 @@ function utilitiesMenu() {
         .addOptions([
 
           {
-            label: "Ping",
+            label:
+              "Ping",
             description:
               "Muestra la latencia del bot",
-            value: "ping",
-            emoji: "🏓"
+            value:
+              "ping",
+            emoji:
+              "🏓"
           },
 
           {
-            label: "Bot Info",
+            label:
+              "Bot Info",
             description:
               "Información de LRM Studio",
-            value: "botinfo",
-            emoji: "🤖"
+            value:
+              "botinfo",
+            emoji:
+              "🤖"
           },
 
           {
-            label: "Server Info",
+            label:
+              "Server Info",
             description:
-              "Información de LRM Studio",
-            value: "serverinfo",
-            emoji: "🖥️"
+              "Información del servidor",
+            value:
+              "serverinfo",
+            emoji:
+              "🖥️"
           },
 
           {
-            label: "Miembros",
+            label:
+              "Miembros",
             description:
               "Muestra la cantidad de miembros",
-            value: "membercount",
-            emoji: "👥"
+            value:
+              "membercount",
+            emoji:
+              "👥"
           },
 
           {
-            label: "Uptime",
+            label:
+              "Uptime",
             description:
               "Tiempo que lleva activo el bot",
-            value: "uptime",
-            emoji: "⏱️"
+            value:
+              "uptime",
+            emoji:
+              "⏱️"
           },
 
           {
-            label: "User Info",
+            label:
+              "User Info",
             description:
               "Información sobre vos",
-            value: "userinfo",
-            emoji: "👤"
+            value:
+              "userinfo",
+            emoji:
+              "👤"
           },
 
           {
-            label: "Avatar",
+            label:
+              "Avatar",
             description:
               "Muestra tu avatar",
-            value: "avatar",
-            emoji: "🖼️"
+            value:
+              "avatar",
+            emoji:
+              "🖼️"
           },
 
           {
-            label: "Invitaciones",
+            label:
+              "Invitaciones",
             description:
               "Muestra tus invitaciones",
-            value: "invitever",
-            emoji: "📨"
+            value:
+              "invitever",
+            emoji:
+              "📨"
           },
 
           {
-            label: "Random",
+            label:
+              "Random",
             description:
               "Genera un número aleatorio",
-            value: "random",
-            emoji: "🎲"
+            value:
+              "random",
+            emoji:
+              "🎲"
           },
 
           {
-            label: "Dado",
+            label:
+              "Dado",
             description:
               "Lanza un dado",
-            value: "dice",
-            emoji: "🎲"
+            value:
+              "dice",
+            emoji:
+              "🎲"
           },
 
           {
-            label: "Choose",
+            label:
+              "Choose",
             description:
               "Elige entre varias opciones",
-            value: "choose",
-            emoji: "🎯"
+            value:
+              "choose",
+            emoji:
+              "🎯"
           },
 
           {
-            label: "Piedra Papel Tijera",
+            label:
+              "Piedra Papel Tijera",
             description:
               "Juega contra el bot",
-            value: "rps",
-            emoji: "✊"
+            value:
+              "rps",
+            emoji:
+              "✊"
           },
 
           {
-            label: "8Ball",
+            label:
+              "8Ball",
             description:
               "Pregunta a la bola 8",
-            value: "8ball",
-            emoji: "🔮"
+            value:
+              "8ball",
+            emoji:
+              "🔮"
           }
         ])
     );
@@ -1475,47 +1565,60 @@ async function executeUserCommand(
     return interaction.reply({
       embeds: [
         glassEmbed({
-          title: "📚 LRM Studio",
+          title:
+            "📚 LRM Studio",
+
           description:
             "Selecciona una categoría desde el menú para consultar los comandos disponibles.",
+
           color:
             COLORS.primary,
 
           fields: [
 
             {
-              name: "📚 General",
+              name:
+                "📚 General",
               value:
                 "`/help` `/utilidades` `/ping` `/botinfo`",
-              inline: false
+              inline:
+                false
             },
 
             {
-              name: "🎮 Economía",
+              name:
+                "🎮 Economía",
               value:
                 "`/balance` `/work` `/risk` `/crime` `/daily` `/dep` `/with` `/pay`",
-              inline: false
+              inline:
+                false
             },
 
             {
-              name: "🏆 Perfil",
+              name:
+                "🏆 Perfil",
               value:
                 "`/profile` `/inventory` `/rank` `/leveltop` `/baltop`",
-              inline: false
+              inline:
+                false
             },
 
             {
-              name: "📊 Diversión",
+              name:
+                "📊 Diversión",
               value:
                 "`/coinflip` `/8ball` `/random` `/dice` `/choose` `/rps` `/luckroyale`",
-              inline: false
+              inline:
+                false
             },
 
             {
-              name: "ℹ️ Servidor",
+              name:
+                "ℹ️ Servidor",
               value:
                 "`/serverinfo` `/membercount` `/userinfo` `/avatar` `/uptime`",
-              inline: false
+              inline:
+                false
             }
           ]
         })
@@ -2223,16 +2326,13 @@ async function executeUserCommand(
       });
     }
 
-    const result =
-      random(min, max);
-
     return interaction.reply({
       embeds: [
         glassEmbed({
           title:
             `${E.random} Random`,
           description:
-            `🎲 Resultado: **${result}**`,
+            `🎲 Resultado: **${random(min, max)}**`,
           color:
             COLORS.info
         })
@@ -2248,16 +2348,13 @@ async function executeUserCommand(
     command === "dice"
   ) {
 
-    const result =
-      random(1, 6);
-
     return interaction.reply({
       embeds: [
         glassEmbed({
           title:
             "🎲 Dado",
           description:
-            `Resultado: **${result}**`,
+            `Resultado: **${random(1, 6)}**`,
           color:
             COLORS.info
         })
@@ -2314,8 +2411,7 @@ async function executeUserCommand(
           title:
             "🎯 Choose",
           description:
-            `La opción elegida es:\n\n` +
-            `> **${choice}**`,
+            `La opción elegida es:\n\n> **${choice}**`,
           color:
             COLORS.info
         })
@@ -2419,15 +2515,8 @@ async function executeUserCommand(
 
     const inviteData =
       data.inviteSystem
-        ?.[
-          interaction.guild.id
-        ]
-        ?.[
-          interaction.user.id
-        ];
-
-    const invites =
-      inviteData?.invites || 0;
+        ?.[interaction.guild.id]
+        ?.[interaction.user.id];
 
     return interaction.reply({
       embeds: [
@@ -2436,7 +2525,7 @@ async function executeUserCommand(
             "📨 Invitaciones",
           description:
             `${interaction.user}\n\n` +
-            `📨 Invitaciones: **${invites}**`,
+            `📨 Invitaciones: **${inviteData?.invites || 0}**`,
           color:
             COLORS.info
         })
@@ -2457,18 +2546,46 @@ async function executeUserCommand(
         "texto"
       );
 
+    const settings =
+      getGuildSettings(
+        interaction.guild.id
+      );
+
+    const channel =
+      settings.suggestionChannel
+        ? interaction.guild.channels.cache.get(
+            settings.suggestionChannel
+          )
+        : null;
+
+    const embed =
+      glassEmbed({
+        title:
+          "💡 Sugerencia",
+        description:
+          `${interaction.user}\n\n> ${suggestion}`,
+        color:
+          COLORS.warning
+      });
+
+    if (channel) {
+
+      await channel.send({
+        embeds: [embed]
+      });
+
+      return interaction.reply({
+        embeds: [
+          successEmbed(
+            "Tu sugerencia fue enviada correctamente."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
     return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "💡 Sugerencia",
-          description:
-            `${interaction.user}\n\n` +
-            `> ${suggestion}`,
-          color:
-            COLORS.warning
-        })
-      ]
+      embeds: [embed]
     });
   }
 
@@ -2664,23 +2781,23 @@ async function executeUserCommand(
       ) ||
       interaction.user;
 
+    const avatar =
+      target.displayAvatarURL({
+        size: 4096,
+        extension: "png"
+      });
+
     return interaction.reply({
       embeds: [
         glassEmbed({
           title:
             "🖼️ Avatar",
           description:
-            `[Abrir avatar completo](${target.displayAvatarURL({
-              size: 4096,
-              extension: "png"
-            })})`,
+            `[Abrir avatar completo](${avatar})`,
           color:
             COLORS.info
         }).setImage(
-          target.displayAvatarURL({
-            size: 1024,
-            extension: "png"
-          })
+          avatar
         )
       ]
     });
@@ -2710,9 +2827,9 @@ client.on(
 
     try {
 
-      // ================================================
+      // ==================================================
       // BOTONES LUCK ROYALE
-      // ================================================
+      // ==================================================
 
       if (
         interaction.isButton()
@@ -2749,9 +2866,9 @@ client.on(
         }
       }
 
-      // ================================================
+      // ==================================================
       // MENÚ UTILIDADES
-      // ================================================
+      // ==================================================
 
       if (
         interaction.isStringSelectMenu() &&
@@ -2777,7 +2894,8 @@ client.on(
                   COLORS.success
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2797,7 +2915,8 @@ client.on(
                   COLORS.primary
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2821,7 +2940,8 @@ client.on(
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2840,7 +2960,8 @@ client.on(
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2884,7 +3005,8 @@ client.on(
                   COLORS.success
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2909,7 +3031,8 @@ client.on(
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2920,8 +3043,10 @@ client.on(
           const avatar =
             interaction.user
               .displayAvatarURL({
-                size: 1024,
-                extension: "png"
+                size:
+                  1024,
+                extension:
+                  "png"
               });
 
           return interaction.reply({
@@ -2937,7 +3062,8 @@ client.on(
                 avatar
               )
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2947,12 +3073,8 @@ client.on(
 
           const inviteData =
             data.inviteSystem
-              ?.[
-                interaction.guild.id
-              ]
-              ?.[
-                interaction.user.id
-              ];
+              ?.[interaction.guild.id]
+              ?.[interaction.user.id];
 
           return interaction.reply({
             embeds: [
@@ -2965,7 +3087,8 @@ client.on(
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2973,21 +3096,19 @@ client.on(
           value === "random"
         ) {
 
-          const result =
-            random(1, 100);
-
           return interaction.reply({
             embeds: [
               glassEmbed({
                 title:
                   "🎲 Random",
                 description:
-                  `Tu número aleatorio es **${result}**.`,
+                  `Tu número aleatorio es **${random(1, 100)}**.`,
                 color:
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -2995,21 +3116,19 @@ client.on(
           value === "dice"
         ) {
 
-          const result =
-            random(1, 6);
-
           return interaction.reply({
             embeds: [
               glassEmbed({
                 title:
                   "🎲 Dado",
                 description:
-                  `🎲 Sacaste un **${result}**.`,
+                  `🎲 Sacaste un **${random(1, 6)}**.`,
                 color:
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -3029,7 +3148,8 @@ client.on(
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -3048,7 +3168,8 @@ client.on(
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
 
@@ -3067,18 +3188,33 @@ client.on(
                   COLORS.info
               })
             ],
-            ephemeral: true
+            ephemeral:
+              true
           });
         }
       }
 
-      // ================================================
+      // ==================================================
       // SLASH COMMANDS
-      // ================================================
+      // ==================================================
 
       if (
         interaction.isChatInputCommand()
       ) {
+
+        // IMPORTANTE:
+        // Los comandos de admin los maneja admin.js.
+        // Así evitamos respuestas duplicadas.
+
+        if (
+          adminCommands.some(
+            command =>
+              command.name ===
+              interaction.commandName
+          )
+        ) {
+          return;
+        }
 
         return executeUserCommand(
           interaction
@@ -3104,10 +3240,12 @@ client.on(
                 "Ocurrió un error ejecutando esta interacción."
               )
             ],
-            ephemeral: true
+            ephemeral:
+              true
           })
-          .catch(() => {});
-
+          .catch(
+            () => {}
+          );
       }
 
       return interaction
@@ -3117,9 +3255,241 @@ client.on(
               "Ocurrió un error ejecutando esta interacción."
             )
           ],
-          ephemeral: true
+          ephemeral:
+            true
         })
-        .catch(() => {});
+        .catch(
+          () => {}
+        );
+    }
+  }
+);
+
+// ======================================================
+// MIEMBRO NUEVO
+// ======================================================
+
+client.on(
+  "guildMemberAdd",
+  async member => {
+
+    try {
+
+      const guild =
+        member.guild;
+
+      const settings =
+        getGuildSettings(
+          guild.id
+        );
+
+      // ==================================================
+      // DETECTAR INVITACIÓN UTILIZADA
+      // ==================================================
+
+      let usedInvite = null;
+
+      try {
+
+        const oldMap =
+          inviteCache.get(
+            guild.id
+          ) || new Map();
+
+        const newInvites =
+          await guild.invites.fetch();
+
+        const changes =
+          getInviteChanges(
+            oldMap,
+            newInvites
+          );
+
+        if (changes.length) {
+
+          usedInvite =
+            changes[0].invite;
+        }
+
+        const newMap =
+          new Map();
+
+        newInvites.forEach(
+          invite => {
+
+            newMap.set(
+              invite.code,
+              invite.uses || 0
+            );
+          }
+        );
+
+        inviteCache.set(
+          guild.id,
+          newMap
+        );
+
+      } catch (error) {
+
+        console.error(
+          `No se pudo detectar la invitación usada en ${guild.name}:`,
+          error.message
+        );
+      }
+
+      // ==================================================
+      // BIENVENIDA
+      // ==================================================
+
+      if (
+        settings.welcomeChannel
+      ) {
+
+        const channel =
+          guild.channels.cache.get(
+            settings.welcomeChannel
+          );
+
+        if (channel) {
+
+          const welcomeText =
+            WELCOME_TEMPLATE
+              .replace(
+                "$(user.mention)",
+                `${member}`
+              )
+              .replace(
+                "$(server.member_count)",
+                String(
+                  guild.memberCount
+                )
+              );
+
+          await channel.send({
+            embeds: [
+              glassEmbed({
+                title:
+                  "👋・Bienvenido/a",
+                description:
+                  welcomeText,
+                color:
+                  COLORS.primary
+              })
+            ]
+          }).catch(
+            error =>
+              console.error(
+                "Error enviando bienvenida:",
+                error.message
+              )
+          );
+        }
+      }
+
+      // ==================================================
+      // INVITADOR
+      // ==================================================
+
+      if (
+        usedInvite &&
+        usedInvite.inviter
+      ) {
+
+        const inviter =
+          usedInvite.inviter;
+
+        data.inviteSystem[
+          guild.id
+        ] ??= {};
+
+        data.inviteSystem[
+          guild.id
+        ][
+          inviter.id
+        ] ??= {
+          invites: 0
+        };
+
+        data.inviteSystem[
+          guild.id
+        ][
+          inviter.id
+        ].invites++;
+
+        saveData();
+
+        // ==================================================
+        // MENSAJE DE INVITACIÓN
+        // ==================================================
+
+        if (
+          settings.inviteChannel
+        ) {
+
+          const channel =
+            guild.channels.cache.get(
+              settings.inviteChannel
+            );
+
+          if (channel) {
+
+            const inviteText =
+              INVITE_TEMPLATE
+                .replace(
+                  "$(inviter.mention)",
+                  `${inviter}`
+                )
+                .replace(
+                  "$(inviter.invites)",
+                  String(
+                    data.inviteSystem[
+                      guild.id
+                    ][
+                      inviter.id
+                    ].invites
+                  )
+                )
+                .replace(
+                  "$(server.member_count)",
+                  String(
+                    guild.memberCount
+                  )
+                );
+
+            await channel.send({
+              embeds: [
+                glassEmbed({
+                  title:
+                    "🔗・Nueva Invitación",
+                  description:
+                    inviteText,
+                  color:
+                    COLORS.info
+                })
+              ]
+            }).catch(
+              error =>
+                console.error(
+                  "Error enviando mensaje de invitación:",
+                  error.message
+                )
+            );
+          }
+        }
+
+      } else {
+
+        console.log(
+          `⚠️ No se pudo determinar quién invitó a ${member.user.tag} en ${guild.name}.`
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Error en guildMemberAdd:",
+        error
+      );
     }
   }
 );
@@ -3142,9 +3512,9 @@ client.on(
     const content =
       message.content.trim();
 
-    // ================================================
+    // ==================================================
     // PREFIX
-    // ================================================
+    // ==================================================
 
     if (
       content.startsWith(PREFIX)
@@ -3160,6 +3530,10 @@ client.on(
         args
           .shift()
           ?.toLowerCase();
+
+      // ================================================
+      // HELP
+      // ================================================
 
       if (
         command === "help"
@@ -3180,6 +3554,10 @@ client.on(
         });
       }
 
+      // ================================================
+      // UTILIDADES
+      // ================================================
+
       if (
         command === "utilidades"
       ) {
@@ -3193,6 +3571,10 @@ client.on(
           ]
         });
       }
+
+      // ================================================
+      // BALANCE
+      // ================================================
 
       if (
         command === "balance"
@@ -3219,6 +3601,10 @@ client.on(
         });
       }
 
+      // ================================================
+      // PING
+      // ================================================
+
       if (
         command === "ping"
       ) {
@@ -3236,6 +3622,10 @@ client.on(
           ]
         });
       }
+
+      // ================================================
+      // LUCK ROYALE
+      // ================================================
 
       if (
         command === "luckroyale"
@@ -3260,11 +3650,189 @@ client.on(
           fakeInteraction
         );
       }
+
+      // ================================================
+      // AFFY
+      // ================================================
+
+      if (
+        command === "affy"
+      ) {
+
+        const code =
+          args[0]
+            ?.replace(
+              /https?:\/\/(?:www\.)?(?:discord\.gg|discord\.com\/invite)\//i,
+              ""
+            );
+
+        if (!code) {
+
+          return message.reply({
+            embeds: [
+              errorEmbed(
+                "Debes proporcionar una invitación de Discord.\n\n" +
+                "Ejemplo: `.affy discord.gg/ejemplo`"
+              )
+            ]
+          });
+        }
+
+        try {
+
+          const invite =
+            await client.fetchInvite(
+              code
+            );
+
+          if (
+            !invite.guild
+          ) {
+
+            return message.reply({
+              embeds: [
+                errorEmbed(
+                  "No pude encontrar el servidor de esa invitación."
+                )
+              ]
+            });
+          }
+
+          const guildId =
+            message.guild.id;
+
+          data.partners[
+            guildId
+          ] ??= {};
+
+          data.partners[
+            guildId
+          ][
+            invite.guild.id
+          ] ??= {
+            points: 0,
+            invites: 0,
+            name:
+              invite.guild.name
+          };
+
+          const partner =
+            data.partners[
+              guildId
+            ][
+              invite.guild.id
+            ];
+
+          partner.points++;
+
+          partner.name =
+            invite.guild.name;
+
+          saveData();
+
+          const rank =
+            getPartnerRank(
+              guildId,
+              partner.points
+            );
+
+          const affyText =
+            AFFY_TEMPLATE
+              .replace(
+                "$(invite.guild.name)",
+                invite.guild.name
+              )
+              .replace(
+                "$(user.mention)",
+                `${message.author}`
+              )
+              .replace(
+                "$(partner.rank)",
+                String(rank)
+              )
+              .replace(
+                "$(partner.points)",
+                String(
+                  partner.points
+                )
+              );
+
+          const settings =
+            getGuildSettings(
+              guildId
+            );
+
+          const channel =
+            settings.affysChannel
+              ? message.guild.channels.cache.get(
+                  settings.affysChannel
+                )
+              : null;
+
+          if (!channel) {
+
+            return message.reply({
+              embeds: [
+                errorEmbed(
+                  "No hay un canal de Affys configurado.\n\n" +
+                  "Configúralo desde el panel de administración."
+                )
+              ]
+            });
+          }
+
+          const embed =
+            glassEmbed({
+              title:
+                "💞・Nuevo Affy",
+              description:
+                affyText,
+              color:
+                COLORS.primary
+            });
+
+          await channel.send({
+            content:
+              "@everyone",
+            embeds: [
+              embed
+            ],
+            allowedMentions: {
+              parse: [
+                "everyone"
+              ]
+            }
+          });
+
+          return message.reply({
+            embeds: [
+              successEmbed(
+                `El Affy con **${invite.guild.name}** fue publicado correctamente.`
+              )
+            ]
+          });
+
+        } catch (error) {
+
+          console.error(
+            "Error creando Affy:",
+            error
+          );
+
+          return message.reply({
+            embeds: [
+              errorEmbed(
+                "No pude procesar esa invitación."
+              )
+            ]
+          });
+        }
+      }
     }
 
-    // ================================================
+    // ==================================================
     // XP POR MENSAJE
-    // ================================================
+    // ==================================================
 
     const user =
       getUser(
@@ -3317,18 +3885,15 @@ client.on(
             String(rank)
           );
 
-      const channelId =
-        data.settings
-          ?.systemChannels
-          ?.level
-          ?.[
-            message.guild.id
-          ];
+      const settings =
+        getGuildSettings(
+          message.guild.id
+        );
 
       const channel =
-        channelId
+        settings.levelChannel
           ? message.guild.channels.cache.get(
-              channelId
+              settings.levelChannel
             )
           : message.channel;
 
@@ -3349,198 +3914,6 @@ client.on(
           () => {}
         );
       }
-    }
-
-    // ================================================
-    // INVITACIONES / ALIANZAS / AFFYS
-    // ================================================
-
-    const inviteMatch =
-      content.match(
-        /https?:\/\/(?:www\.)?(?:discord\.gg|discord\.com\/invite)\/([a-zA-Z0-9-]+)/i
-      );
-
-    if (
-      !inviteMatch
-    ) {
-      return;
-    }
-
-    const code =
-      inviteMatch[1];
-
-    try {
-
-      const invite =
-        await client.fetchInvite(
-          code
-        );
-
-      if (
-        !invite.guild
-      ) {
-        return;
-      }
-
-      const inviter =
-        message.author;
-
-      const guildId =
-        message.guild.id;
-
-      data.inviteSystem[
-        guildId
-      ] ??= {};
-
-      data.inviteSystem[
-        guildId
-      ][
-        inviter.id
-      ] ??= {
-        invites: 0
-      };
-
-      data.inviteSystem[
-        guildId
-      ][
-        inviter.id
-      ].invites++;
-
-      data.partners[
-        guildId
-      ] ??= {};
-
-      data.partners[
-        guildId
-      ][
-        invite.guild.id
-      ] ??= {
-        points: 0,
-        invites: 0,
-        name:
-          invite.guild.name
-      };
-
-      data.partners[
-        guildId
-      ][
-        invite.guild.id
-      ].points++;
-
-      data.partners[
-        guildId
-      ][
-        invite.guild.id
-      ].invites++;
-
-      saveData();
-
-      const partner =
-        data.partners[
-          guildId
-        ][
-          invite.guild.id
-        ];
-
-      const rank =
-        getPartnerRank(
-          guildId,
-          partner.points
-        );
-
-      // ================================================
-      // EMBED DE ALIANZA
-      // ================================================
-
-      const allianceText =
-        ALLIANCE_TEMPLATE
-          .replace(
-            "$(invite.guild.name)",
-            invite.guild.name
-          )
-          .replace(
-            "$(user.mention)",
-            `${inviter}`
-          )
-          .replace(
-            "$(partner.rank)",
-            String(rank)
-          )
-          .replace(
-            "$(partner.points)",
-            String(
-              partner.points
-            )
-          );
-
-      const allianceChannelId =
-        data.settings
-          ?.systemChannels
-          ?.alliance
-          ?.[
-            guildId
-          ];
-
-      const allianceChannel =
-        allianceChannelId
-          ? message.guild.channels.cache.get(
-              allianceChannelId
-            )
-          : null;
-
-      if (
-        allianceChannel
-      ) {
-
-        const allianceEmbed =
-          glassEmbed({
-            title:
-              "🤝・Nueva Alianza",
-            description:
-              allianceText,
-            color:
-              COLORS.success
-          });
-
-        await allianceChannel.send({
-
-          content:
-            `<@&${ALLIANCE_ROLE_ID}>`,
-
-          embeds: [
-            allianceEmbed
-          ],
-
-          allowedMentions: {
-            roles: [
-              ALLIANCE_ROLE_ID
-            ]
-          }
-        }).catch(
-          error =>
-            console.error(
-              "Error enviando alianza:",
-              error
-            )
-        );
-
-      } else {
-
-        await logAction(
-          message.guild,
-          "alliance",
-          "🤝 Nueva alianza",
-          allianceText,
-          COLORS.success
-        );
-      }
-
-    } catch (error) {
-
-      console.error(
-        "Error procesando invitación:",
-        error.message
-      );
     }
   }
 );
@@ -3565,15 +3938,16 @@ client.once(
       `🏓 Ping: ${client.ws.ping}ms`
     );
 
-    // ================================================
-    // REGISTRAR SLASH COMMANDS
-    // ================================================
+    // ==================================================
+    // REGISTRAR COMANDOS
+    // ==================================================
 
     try {
 
       const rest =
         new REST({
-          version: "10"
+          version:
+            "10"
         }).setToken(
           TOKEN
         );
@@ -3600,9 +3974,9 @@ client.once(
       );
     }
 
-    // ================================================
+    // ==================================================
     // CACHE DE INVITACIONES
-    // ================================================
+    // ==================================================
 
     for (
       const guild
@@ -3614,9 +3988,9 @@ client.once(
       );
     }
 
-    // ================================================
+    // ==================================================
     // PRESENCIA
-    // ================================================
+    // ==================================================
 
     client.user.setPresence({
 
@@ -3624,7 +3998,8 @@ client.once(
         {
           name:
             "LRM Studio 💜",
-          type: 3
+          type:
+            3
         }
       ],
 
@@ -3644,6 +4019,10 @@ client.on(
 
     console.log(
       `➕ Unido a: ${guild.name}`
+    );
+
+    getGuildSettings(
+      guild.id
     );
 
     await cacheInvites(
