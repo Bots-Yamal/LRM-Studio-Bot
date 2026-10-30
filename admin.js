@@ -374,9 +374,20 @@ async function updateHoneypotMessage(
         .setDisabled(true)
     );
 
+  const honeypotEmbed =
+    new EmbedBuilder()
+      .setColor(COLORS.warning)
+      .setDescription(
+        DEFAULT_HONEYPOT_MESSAGE
+      )
+      .setFooter({
+        text:
+          "LRM Studio • Fluent Glass"
+      });
+
   await msg.edit({
-    content:
-      DEFAULT_HONEYPOT_MESSAGE,
+    content: null,
+    embeds: [honeypotEmbed],
     components: [row]
   }).catch(() => {});
 }
@@ -426,10 +437,20 @@ async function setupHoneypot(
         .setDisabled(true)
     );
 
+  const honeypotEmbed =
+    new EmbedBuilder()
+      .setColor(COLORS.warning)
+      .setDescription(
+        DEFAULT_HONEYPOT_MESSAGE
+      )
+      .setFooter({
+        text:
+          "LRM Studio • Fluent Glass"
+      });
+
   const sent =
     await channel.send({
-      content:
-        DEFAULT_HONEYPOT_MESSAGE,
+      embeds: [honeypotEmbed],
       components: [row]
     });
 
