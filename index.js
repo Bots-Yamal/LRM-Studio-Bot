@@ -8,11 +8,11 @@ const {
   StringSelectMenuBuilder,
   SlashCommandBuilder,
   REST,
-  Routes
+  Routes,
+  PermissionsBitField
 } = require("discord.js");
 
 const fs = require("fs");
-const { setupAdmin, adminCommands } = require("./admin");
 
 // ======================================================
 // CONFIG
@@ -33,10 +33,12 @@ const ALLIANCE_ROLE_ID = "1565728408619720857";
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildInvites
+    GatewayIntentBits.GuildInvites,
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildVoiceStates
   ]
 });
 
@@ -49,116 +51,13 @@ const COLORS = {
   success: "#57F287",
   error: "#ED4245",
   warning: "#FEE75C",
-  economy: "#63E6BE",
   level: "#C084FC",
   info: "#60A5FA",
   admin: "#A78BFA",
-  royale: "#F5B7FF"
+  alliance: "#F5B7FF",
+  affy: "#FF9EDB",
+  security: "#FF6B6B"
 };
-
-// ======================================================
-// SIMBOLOS
-// ======================================================
-
-const E = {
-  money: "$",
-  bank: "▱",
-  gain: "＋",
-  loss: "−",
-  transfer: "⇄",
-  inventory: "◇",
-  level: "✦",
-  time: "◷",
-  warning: "⚠",
-  error: "×",
-  success: "✓",
-  info: "◉",
-  admin: "⚙",
-  logs: "⌁",
-  arrow: "›",
-  user: "○",
-  shop: "▦",
-  random: "◆",
-  royale: "✧"
-};
-
-// ======================================================
-// TEMPLATES
-// ======================================================
-
-const WELCOME_TEMPLATE = `👋・¡Bienvenido/a a LRM Studio!
-
-¡Hey, $(user.mention)! Nos alegra tenerte por aquí. 💫
-
-Esperamos que disfrutes tu estancia, conozcas gente nueva y formes parte de nuestra comunidad.
-
-📌 Para comenzar:
-
-📜 Lee las reglas del servidor.
-🔔 Revisa nuestros anuncios y novedades.
-🎭 Consigue tus roles.
-💬 ¡Preséntate y comienza a hablar con la comunidad!
-
-✨ Ya somos $(server.member_count) miembros en LRM Studio.
-
-¡Gracias por unirte y esperamos que la pases genial! ❤️
-
-— LRM Studio`;
-
-const INVITE_TEMPLATE = `🔗・Sistema de Invitaciones
-
-¡Gracias por ayudar a crecer a LRM Studio! 💫
-
-Invita a tus amigos y ayuda a que nuestra comunidad llegue cada vez a más personas.
-
-👤 Invitado por: $(inviter.mention)
-📨 Invitaciones: $(inviter.invites)
-👥 Miembros: $(server.member_count)
-
-⭐ Cada invitación cuenta. Comparte nuestro servidor con personas que puedan estar interesadas en formar parte de nuestra comunidad.
-
-¡Gracias por apoyar a la comunidad! ❤️
-— LRM Studio`;
-
-const LEVEL_TEMPLATE = `🎉・¡Subiste de Nivel!
-
-¡Felicidades $(user.mention)! ✨
-
-🏆 Nivel: $(level)
-⭐ XP: $(xp)
-📊 Rank: #$(rank)
-
-¡Sigue participando en LRM Studio! 💖`;
-
-const ALLIANCE_TEMPLATE = `🤝・Nueva Alianza
-
-Gracias $(invite.guild.name) por hacer alianza con LRM Studio. 💖
-
-👤 Hecha por: $(user.mention)
-🏆 Rank: #$(partner.rank)
-⭐ Puntos: $(partner.points)
-
-LRM Studio × $(invite.guild.name) 🤝`;
-
-const AFFY_TEMPLATE = `💞・Nuevo Affy
-
-$(user.mention) ahora es Affy de LRM Studio ✨
-
-🤝 Servidor: $(invite.guild.name)
-🏆 Rank: #$(partner.rank)
-⭐ Puntos: $(partner.points)
-
-LRM Studio × $(invite.guild.name) 💞`;
-
-const HONEYPOT_TEMPLATE = `🍯・Honeypot
-
-Este canal forma parte del sistema de seguridad de LRM Studio.
-
-⚠️ No interactúes con este canal.
-
-Cualquier interacción será detectada automáticamente y podrá activar las medidas de seguridad del servidor.
-
-🛡️ LRM Studio Security`;
 
 // ======================================================
 // DATA
@@ -166,20 +65,17 @@ Cualquier interacción será detectada automáticamente y podrá activar las med
 
 const DEFAULT_DATA = {
   users: {},
-  shop: {},
-
-  settings: {
-    logs: {},
-    systemChannels: {}
-  },
-
   guildSettings: {},
-
-  ticketSystem: {},
   inviteSystem: {},
   partners: {},
   moderation: {},
-  honeypot: {}
+  tickets: {},
+  giveaways: {},
+  reminders: {},
+  achievements: {},
+  streaks: {},
+  antiSpam: {},
+  logs: {}
 };
 
 function loadData() {
@@ -200,28 +96,22 @@ function loadData() {
     );
 
     data.users ??= {};
-    data.shop ??= {};
-
-    data.settings ??= {};
-    data.settings.logs ??= {};
-    data.settings.systemChannels ??= {};
-
     data.guildSettings ??= {};
-
-    data.ticketSystem ??= {};
     data.inviteSystem ??= {};
     data.partners ??= {};
     data.moderation ??= {};
-    data.honeypot ??= {};
+    data.tickets ??= {};
+    data.giveaways ??= {};
+    data.reminders ??= {};
+    data.achievements ??= {};
+    data.streaks ??= {};
+    data.antiSpam ??= {};
+    data.logs ??= {};
 
     return data;
 
   } catch (error) {
-
-    console.error(
-      "Error cargando data.json:",
-      error
-    );
+    console.error("Error leyendo data.json:", error);
 
     return JSON.parse(
       JSON.stringify(DEFAULT_DATA)
@@ -233,49 +123,50 @@ let data = loadData();
 
 function saveData() {
   try {
-
     fs.writeFileSync(
       DATA_FILE,
       JSON.stringify(data, null, 2)
     );
-
   } catch (error) {
-
-    console.error(
-      "Error guardando data.json:",
-      error
-    );
+    console.error("Error guardando data.json:", error);
   }
 }
 
 // ======================================================
-// CONFIGURACIÓN POR SERVIDOR
+// GUILD SETTINGS
 // ======================================================
 
 function getGuildSettings(guildId) {
-
   data.guildSettings ??= {};
 
   data.guildSettings[guildId] ??= {
     welcomeChannel: null,
+    goodbyeChannel: null,
     inviteChannel: null,
     levelChannel: null,
     allianceChannel: null,
     affysChannel: null,
     suggestionChannel: null,
-    honeypotChannel: null
+    ticketChannel: null,
+    logChannels: {},
+    antiSpamEnabled: true,
+    antiSpamMuteMinutes: 60
   };
 
   const settings =
     data.guildSettings[guildId];
 
   settings.welcomeChannel ??= null;
+  settings.goodbyeChannel ??= null;
   settings.inviteChannel ??= null;
   settings.levelChannel ??= null;
   settings.allianceChannel ??= null;
   settings.affysChannel ??= null;
   settings.suggestionChannel ??= null;
-  settings.honeypotChannel ??= null;
+  settings.ticketChannel ??= null;
+  settings.logChannels ??= {};
+  settings.antiSpamEnabled ??= true;
+  settings.antiSpamMuteMinutes ??= 60;
 
   return settings;
 }
@@ -285,40 +176,27 @@ function getGuildSettings(guildId) {
 // ======================================================
 
 function getUser(id) {
+  data.users ??= {};
 
-  if (!data.users[id]) {
-
-    data.users[id] = {
-      wallet: 0,
-      bank: 0,
-      inventory: [],
-      xp: 0,
-      level: 1,
-      cooldowns: {},
-
-      luckRoyale: {
-        spins: 0,
-        wins2: 0,
-        wins3: 0
-      }
-    };
-
-    saveData();
-  }
+  data.users[id] ??= {
+    xp: 0,
+    level: 1,
+    warnings: {},
+    messages: 0,
+    achievements: [],
+    lastMessage: 0,
+    streak: 0
+  };
 
   const user = data.users[id];
 
-  user.wallet ??= 0;
-  user.bank ??= 0;
-  user.inventory ??= [];
   user.xp ??= 0;
   user.level ??= 1;
-  user.cooldowns ??= {};
-
-  user.luckRoyale ??= {};
-  user.luckRoyale.spins ??= 0;
-  user.luckRoyale.wins2 ??= 0;
-  user.luckRoyale.wins3 ??= 0;
+  user.warnings ??= {};
+  user.messages ??= 0;
+  user.achievements ??= [];
+  user.lastMessage ??= 0;
+  user.streak ??= 0;
 
   return user;
 }
@@ -328,38 +206,9 @@ function getUser(id) {
 // ======================================================
 
 function random(min, max) {
-
   return Math.floor(
-    Math.random() *
-      (max - min + 1)
+    Math.random() * (max - min + 1)
   ) + min;
-}
-
-function cooldown(
-  user,
-  key,
-  seconds
-) {
-
-  const now = Date.now();
-
-  const last =
-    user.cooldowns[key] || 0;
-
-  const remaining =
-    seconds * 1000 -
-    (now - last);
-
-  if (remaining > 0) {
-
-    return Math.ceil(
-      remaining / 1000
-    );
-  }
-
-  user.cooldowns[key] = now;
-
-  return 0;
 }
 
 function glassEmbed({
@@ -367,152 +216,167 @@ function glassEmbed({
   description,
   color = COLORS.primary,
   fields = [],
-  footer = true
+  image = null
 }) {
-
-  const embed =
-    new EmbedBuilder()
-      .setColor(color)
-      .setTitle(title)
-      .setDescription(
-        description || null
-      );
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setDescription(description || null)
+    .setFooter({
+      text: "LRM Studio • Fluent Glass"
+    })
+    .setTimestamp();
 
   if (fields.length) {
     embed.addFields(fields);
   }
 
-  if (footer) {
-
-    embed.setFooter({
-      text:
-        "LRM Studio  •  Fluent Glass"
-    });
+  if (image) {
+    embed.setImage(image);
   }
 
   return embed;
 }
 
-function errorEmbed(description) {
-
+function errorEmbed(text) {
   return glassEmbed({
-    title:
-      `${E.error} Error`,
-    description,
-    color:
-      COLORS.error
+    title: "❌ Error",
+    description: text,
+    color: COLORS.error
   });
 }
 
-function successEmbed(description) {
-
+function successEmbed(text) {
   return glassEmbed({
-    title:
-      `${E.success} Completado`,
-    description,
-    color:
-      COLORS.success
+    title: "✅ Completado",
+    description: text,
+    color: COLORS.success
   });
+}
+
+function isAdmin(member) {
+  if (!member) return false;
+
+  return (
+    member.permissions.has(
+      PermissionsBitField.Flags.Administrator
+    ) ||
+    member.guild.ownerId === member.id
+  );
+}
+
+function isStaff(member) {
+  if (!member) return false;
+
+  return (
+    isAdmin(member) ||
+    member.roles.cache.has(ALLIANCE_ROLE_ID)
+  );
 }
 
 // ======================================================
-// XP
+// XP / NIVELES
 // ======================================================
 
 function xpNeeded(level) {
   return level * 100;
 }
 
-function getRank(guild) {
-
-  return Object.entries(
-    data.users
-  )
+function getRank(guild, userId) {
+  const ranking = Object.entries(data.users)
     .map(([id, user]) => ({
       id,
       xp: user.xp || 0
     }))
-    .sort(
-      (a, b) =>
-        b.xp - a.xp
-    );
+    .sort((a, b) => b.xp - a.xp);
+
+  return (
+    ranking.findIndex(
+      item => item.id === userId
+    ) + 1
+  );
 }
 
-function addXP(
-  userId,
-  amount,
-  guild
-) {
-
-  const user =
-    getUser(userId);
+async function addXP(userId, amount, guild) {
+  const user = getUser(userId);
 
   user.xp += amount;
 
   let leveledUp = false;
 
   while (
-    user.xp >=
-    xpNeeded(user.level)
+    user.xp >= xpNeeded(user.level)
   ) {
-
-    user.xp -=
-      xpNeeded(user.level);
-
+    user.xp -= xpNeeded(user.level);
     user.level++;
-
     leveledUp = true;
   }
 
   saveData();
 
-  return {
-    leveledUp,
-    level:
-      user.level
-  };
+  if (leveledUp && guild) {
+    const settings =
+      getGuildSettings(guild.id);
+
+    const channel =
+      settings.levelChannel
+        ? guild.channels.cache.get(
+            settings.levelChannel
+          )
+        : null;
+
+    if (channel) {
+      await channel.send({
+        embeds: [
+          glassEmbed({
+            title: "🎉・¡Subiste de Nivel!",
+            description:
+              `¡Felicidades <@${userId}>! ✨\n\n` +
+              `🏆 Nivel: **${user.level}**\n` +
+              `⭐ XP: **${user.xp}**\n` +
+              `📊 Rank: **#${getRank(guild, userId)}**`,
+            color: COLORS.level
+          })
+        ]
+      }).catch(() => {});
+    }
+
+    await logAction(
+      guild,
+      "levels",
+      "🎉 Subida de nivel",
+      `<@${userId}> alcanzó el nivel **${user.level}**.`
+    );
+  }
 }
 
 // ======================================================
 // LOGS
 // ======================================================
 
-async function sendLog(
-  guild,
-  type,
-  embed
-) {
-
+async function sendLog(guild, type, embed) {
   try {
+    const settings =
+      getGuildSettings(guild.id);
 
     const channelId =
-      data.settings
-        ?.logs
-        ?.[guild.id]
-        ?.[type];
+      settings.logChannels?.[type];
 
-    if (!channelId) {
-      return;
-    }
+    if (!channelId) return;
 
     const channel =
-      guild.channels.cache.get(
-        channelId
-      );
+      guild.channels.cache.get(channelId);
 
-    if (!channel) {
-      return;
-    }
+    if (!channel) return;
 
     await channel.send({
       embeds: [embed]
     });
 
   } catch (error) {
-
     console.error(
       "Error enviando log:",
-      error
+      error.message
     );
   }
 }
@@ -524,8 +388,7 @@ async function logAction(
   description,
   color = COLORS.info
 ) {
-
-  await sendLog(
+  return sendLog(
     guild,
     type,
     glassEmbed({
@@ -540,28 +403,21 @@ async function logAction(
 // INVITACIONES
 // ======================================================
 
-const inviteCache =
-  new Map();
+const inviteCache = new Map();
 
 async function cacheInvites(guild) {
-
   try {
-
     const invites =
       await guild.invites.fetch();
 
-    const map =
-      new Map();
+    const map = new Map();
 
-    invites.forEach(
-      invite => {
-
-        map.set(
-          invite.code,
-          invite.uses || 0
-        );
-      }
-    );
+    invites.forEach(invite => {
+      map.set(
+        invite.code,
+        invite.uses || 0
+      );
+    });
 
     inviteCache.set(
       guild.id,
@@ -569,366 +425,210 @@ async function cacheInvites(guild) {
     );
 
   } catch (error) {
-
     console.error(
-      `No se pudieron cargar invitaciones de ${guild.name}:`,
+      `No se pudieron obtener las invitaciones de ${guild.name}:`,
       error.message
     );
   }
 }
 
-function getInviteChanges(
-  oldMap,
-  newInvites
-) {
+async function findUsedInvite(guild) {
+  try {
+    const oldMap =
+      inviteCache.get(
+        guild.id
+      ) || new Map();
 
-  const changes = [];
+    const invites =
+      await guild.invites.fetch();
 
-  for (
-    const invite
-    of newInvites.values()
-  ) {
+    let usedInvite = null;
 
-    const oldUses =
-      oldMap?.get(
-        invite.code
-      ) || 0;
+    invites.forEach(invite => {
+      const oldUses =
+        oldMap.get(invite.code) || 0;
 
-    const newUses =
-      invite.uses || 0;
+      const newUses =
+        invite.uses || 0;
 
-    if (
-      newUses > oldUses
-    ) {
+      if (
+        newUses > oldUses &&
+        !usedInvite
+      ) {
+        usedInvite = invite;
+      }
+    });
 
-      changes.push({
-        invite,
-        uses:
-          newUses - oldUses
-      });
-    }
+    const newMap = new Map();
+
+    invites.forEach(invite => {
+      newMap.set(
+        invite.code,
+        invite.uses || 0
+      );
+    });
+
+    inviteCache.set(
+      guild.id,
+      newMap
+    );
+
+    return usedInvite;
+
+  } catch (error) {
+    console.error(
+      "Error detectando invitación:",
+      error.message
+    );
+
+    return null;
   }
-
-  return changes;
 }
 
 // ======================================================
-// RANK DE PARTNERS
+// PARTNERS
 // ======================================================
 
-function getPartnerRank(
-  guildId,
-  points
-) {
+function getPartner(guildId, inviteGuildId, name) {
+  data.partners[guildId] ??= {};
 
+  data.partners[guildId][inviteGuildId] ??= {
+    points: 0,
+    invites: 0,
+    name
+  };
+
+  const partner =
+    data.partners[guildId][inviteGuildId];
+
+  partner.name = name;
+
+  return partner;
+}
+
+function getPartnerRank(guildId, points) {
   const partners =
     data.partners[guildId] || {};
 
-  const list =
-    Object.entries(
-      partners
-    )
-      .map(
-        ([id, partner]) => ({
-          id,
-          points:
-            partner.points || 0
-        })
-      )
+  const ranking =
+    Object.values(partners)
       .sort(
         (a, b) =>
-          b.points - a.points
+          (b.points || 0) -
+          (a.points || 0)
       );
 
-  const index =
-    list.findIndex(
-      x =>
-        x.points <= points
+  const position =
+    ranking.findIndex(
+      partner =>
+        (partner.points || 0) <= points
     );
 
-  return index === -1
-    ? list.length + 1
-    : index + 1;
+  return position === -1
+    ? ranking.length + 1
+    : position + 1;
 }
 
 // ======================================================
-// LUCK ROYALE
+// TEMPLATES
 // ======================================================
 
-const ROYALE_POOL = [
-  "🍒",
-  "💎",
-  "⭐",
-  "🍀",
-  "🔥",
-  "💜",
-  "🌟",
-  "👑"
+const WELCOME_TEMPLATE = `
+👋・¡Bienvenido/a a LRM Studio!
+
+¡Hey, $(user.mention)! Nos alegra tenerte por aquí. 💫
+
+Esperamos que disfrutes tu estancia, conozcas gente nueva y formes parte de nuestra comunidad.
+
+📌 Para comenzar:
+
+📜 Lee las reglas del servidor.
+🔔 Revisa nuestros anuncios y novedades.
+🎭 Consigue tus roles.
+💬 ¡Preséntate y comienza a hablar con la comunidad!
+
+✨ Ya somos $(server.member_count) miembros en LRM Studio.
+
+¡Gracias por unirte y esperamos que la pases genial! ❤️
+
+— LRM Studio
+`;
+
+const GOODBYE_TEMPLATE = `
+👋・Hasta pronto
+
+$(user.mention) ha salido de LRM Studio. 💔
+
+👥 Miembros: $(server.member_count)
+
+¡Esperamos volver a verte pronto! ❤️
+`;
+
+const ALLIANCE_TEMPLATE = `
+🤝・Nueva Alianza
+
+Gracias $(invite.guild.name) por hacer alianza con LRM Studio. 💖
+
+👤 Hecha por: $(user.mention)
+🏆 Rank: #$(partner.rank)
+⭐ Puntos: $(partner.points)
+
+LRM Studio × $(invite.guild.name) 🤝
+`;
+
+const AFFY_TEMPLATE = `
+💞・Nuevo Affy
+
+$(user.mention) ahora es Affy de LRM Studio ✨
+
+🤝 Servidor: $(invite.guild.name)
+🏆 Rank: #$(partner.rank)
+⭐ Puntos: $(partner.points)
+
+LRM Studio × $(invite.guild.name) 💞
+`;
+
+const LOG_TYPES = [
+  "messages",
+  "members",
+  "moderation",
+  "channels",
+  "roles",
+  "server",
+  "voice",
+  "invites",
+  "tickets",
+  "levels",
+  "suggestions",
+  "alliance",
+  "affy",
+  "giveaways",
+  "security",
+  "commands"
 ];
 
-async function startLuckRoyale(
-  interaction
+// ======================================================
+// REEMPLAZAR TEMPLATES
+// ======================================================
+
+function replaceTemplate(
+  template,
+  replacements
 ) {
-
-  const user =
-    getUser(
-      interaction.user.id
-    );
-
-  const cd =
-    cooldown(
-      user,
-      "luckroyale",
-      30
-    );
-
-  if (cd) {
-
-    return interaction.reply({
-      embeds: [
-        errorEmbed(
-          `${E.time} Debes esperar **${cd}s** antes de volver a usar Luck Royale.`
-        )
-      ],
-      ephemeral: true
-    });
-  }
-
-  const accept =
-    new ButtonBuilder()
-      .setCustomId(
-        "luck_accept"
-      )
-      .setLabel(
-        "Aceptar"
-      )
-      .setStyle(
-        ButtonStyle.Success
-      );
-
-  const reject =
-    new ButtonBuilder()
-      .setCustomId(
-        "luck_reject"
-      )
-      .setLabel(
-        "Rechazar"
-      )
-      .setStyle(
-        ButtonStyle.Secondary
-      );
-
-  const row =
-    new ActionRowBuilder()
-      .addComponents(
-        accept,
-        reject
-      );
-
-  await interaction.reply({
-    embeds: [
-      glassEmbed({
-        title:
-          `${E.royale} Luck Royale`,
-        description:
-          "🎰 Vas a iniciar una ronda de Luck Royale.\n\n" +
-          "💡 **No cuesta Coins Nisk.**\n" +
-          "🎁 Puedes conseguir premios de Royale.\n\n" +
-          "¿Quieres continuar?",
-        color:
-          COLORS.royale
-      })
-    ],
-    components: [row]
-  });
-}
-
-async function runLuckRoyale(
-  interaction
-) {
-
-  const user =
-    getUser(
-      interaction.user.id
-    );
-
-  user.luckRoyale.spins++;
-
-  const message =
-    interaction.message;
-
-  const row =
-    new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(
-            "luck_running"
-          )
-          .setLabel(
-            "Girando..."
-          )
-          .setStyle(
-            ButtonStyle.Secondary
-          )
-          .setDisabled(true)
-      );
-
-  await interaction.update({
-    embeds: [
-      glassEmbed({
-        title:
-          `${E.royale} Luck Royale`,
-        description:
-          "✨ La ruleta está girando...",
-        color:
-          COLORS.royale
-      })
-    ],
-    components: [row]
-  });
+  let result = template;
 
   for (
-    let i = 0;
-    i < 8;
-    i++
+    const [key, value]
+    of Object.entries(replacements)
   ) {
-
-    const emojis = [
-      ROYALE_POOL[
-        random(
-          0,
-          ROYALE_POOL.length - 1
-        )
-      ],
-      ROYALE_POOL[
-        random(
-          0,
-          ROYALE_POOL.length - 1
-        )
-      ],
-      ROYALE_POOL[
-        random(
-          0,
-          ROYALE_POOL.length - 1
-        )
-      ]
-    ];
-
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          500
-        )
-    );
-
-    await message.edit({
-      embeds: [
-        glassEmbed({
-          title:
-            `${E.royale} Luck Royale`,
-          description:
-            `🎰 **${emojis.join("  |  ")}**`,
-          color:
-            COLORS.royale
-        })
-      ],
-      components: [row]
-    });
+    result =
+      result.replaceAll(
+        key,
+        String(value ?? "")
+      );
   }
 
-  const final = [
-    ROYALE_POOL[
-      random(
-        0,
-        ROYALE_POOL.length - 1
-      )
-    ],
-    ROYALE_POOL[
-      random(
-        0,
-        ROYALE_POOL.length - 1
-      )
-    ],
-    ROYALE_POOL[
-      random(
-        0,
-        ROYALE_POOL.length - 1
-      )
-    ]
-  ];
-
-  const [a, b, c] =
-    final;
-
-  let result;
-  let xp = 3;
-
-  if (
-    a === b &&
-    b === c
-  ) {
-
-    user.inventory.push(
-      `Premio Royale ${a}`
-    );
-
-    user.luckRoyale.wins3++;
-
-    xp = 15;
-
-    result =
-      `👑 **TRIPLE ROYALE**\n\n` +
-      `🎁 Premio: \`Premio Royale ${a}\``;
-
-  } else if (
-    a === b ||
-    a === c ||
-    b === c
-  ) {
-
-    user.inventory.push(
-      "Ficha Royale"
-    );
-
-    user.luckRoyale.wins2++;
-
-    xp = 8;
-
-    result =
-      `✨ **DOBLE ROYALE**\n\n` +
-      `🎁 Premio: \`Ficha Royale\``;
-
-  } else {
-
-    result =
-      "🌙 No hubo combinación esta vez.\n\n" +
-      "⭐ Ganaste experiencia por participar.";
-  }
-
-  addXP(
-    interaction.user.id,
-    xp,
-    interaction.guild
-  );
-
-  saveData();
-
-  await message.edit({
-    embeds: [
-      glassEmbed({
-        title:
-          `${E.royale} Resultado Royale`,
-        description:
-          `🎰 **${final.join("  |  ")}**\n\n` +
-          result +
-          `\n\n⭐ XP ganada: **${xp}**`,
-        color:
-          COLORS.royale
-      })
-    ],
-    components: []
-  });
+  return result.trim();
 }
 
 // ======================================================
@@ -936,7 +636,6 @@ async function runLuckRoyale(
 // ======================================================
 
 const userCommands = [
-
   new SlashCommandBuilder()
     .setName("help")
     .setDescription(
@@ -946,103 +645,13 @@ const userCommands = [
   new SlashCommandBuilder()
     .setName("utilidades")
     .setDescription(
-      "Abre el menú de utilidades"
+      "Muestra las utilidades"
     ),
 
   new SlashCommandBuilder()
-    .setName("balance")
-    .setDescription(
-      "Muestra tu dinero"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("work")
-    .setDescription(
-      "Trabaja y gana Coins Nisk"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("risk")
-    .setDescription(
-      "Arriesga dinero"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("crime")
-    .setDescription(
-      "Comete un crimen"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("daily")
-    .setDescription(
-      "Recoge tu recompensa diaria"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("dep")
-    .setDescription(
-      "Deposita dinero en el banco"
-    )
-    .addIntegerOption(
-      option =>
-        option
-          .setName("cantidad")
-          .setDescription(
-            "Cantidad a depositar"
-          )
-          .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName("with")
-    .setDescription(
-      "Retira dinero del banco"
-    )
-    .addIntegerOption(
-      option =>
-        option
-          .setName("cantidad")
-          .setDescription(
-            "Cantidad a retirar"
-          )
-          .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName("pay")
-    .setDescription(
-      "Paga a otro usuario"
-    )
-    .addUserOption(
-      option =>
-        option
-          .setName("usuario")
-          .setDescription(
-            "Usuario"
-          )
-          .setRequired(true)
-    )
-    .addIntegerOption(
-      option =>
-        option
-          .setName("cantidad")
-          .setDescription(
-            "Cantidad"
-          )
-          .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName("profile")
+    .setName("perfil")
     .setDescription(
       "Muestra tu perfil"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("inventory")
-    .setDescription(
-      "Muestra tu inventario"
     ),
 
   new SlashCommandBuilder()
@@ -1052,152 +661,81 @@ const userCommands = [
     ),
 
   new SlashCommandBuilder()
-    .setName("shop")
+    .setName("top")
     .setDescription(
-      "Muestra la tienda"
+      "Muestra el top de niveles"
     ),
 
   new SlashCommandBuilder()
-    .setName("buy")
+    .setName("actividad")
     .setDescription(
-      "Compra un artículo"
+      "Muestra tu actividad"
+    ),
+
+  new SlashCommandBuilder()
+    .setName("logros")
+    .setDescription(
+      "Muestra tus logros"
+    ),
+
+  new SlashCommandBuilder()
+    .setName("racha")
+    .setDescription(
+      "Muestra tu racha"
+    ),
+
+  new SlashCommandBuilder()
+    .setName("avatar")
+    .setDescription(
+      "Muestra tu avatar"
     )
-    .addStringOption(
-      option =>
-        option
-          .setName("item")
-          .setDescription(
-            "Artículo"
-          )
-          .setRequired(true)
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(false)
     ),
 
   new SlashCommandBuilder()
-    .setName("use")
+    .setName("userinfo")
     .setDescription(
-      "Usa un artículo"
+      "Muestra información de un usuario"
     )
-    .addStringOption(
-      option =>
-        option
-          .setName("item")
-          .setDescription(
-            "Artículo"
-          )
-          .setRequired(true)
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(false)
     ),
 
   new SlashCommandBuilder()
-    .setName("baltop")
+    .setName("serverinfo")
     .setDescription(
-      "Ranking de dinero"
+      "Muestra información del servidor"
     ),
 
   new SlashCommandBuilder()
-    .setName("leveltop")
+    .setName("membercount")
     .setDescription(
-      "Ranking de niveles"
+      "Muestra los miembros"
     ),
 
   new SlashCommandBuilder()
-    .setName("coinflip")
+    .setName("botinfo")
     .setDescription(
-      "Lanza una moneda"
+      "Información del bot"
     ),
 
   new SlashCommandBuilder()
-    .setName("8ball")
+    .setName("ping")
     .setDescription(
-      "Pregunta a la bola 8"
-    )
-    .addStringOption(
-      option =>
-        option
-          .setName("pregunta")
-          .setDescription(
-            "Tu pregunta"
-          )
-          .setRequired(true)
+      "Muestra el ping"
     ),
 
   new SlashCommandBuilder()
-    .setName("random")
+    .setName("uptime")
     .setDescription(
-      "Genera un número aleatorio"
-    )
-    .addIntegerOption(
-      option =>
-        option
-          .setName("min")
-          .setDescription(
-            "Mínimo"
-          )
-          .setRequired(true)
-    )
-    .addIntegerOption(
-      option =>
-        option
-          .setName("max")
-          .setDescription(
-            "Máximo"
-          )
-          .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName("dice")
-    .setDescription(
-      "Lanza un dado"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("choose")
-    .setDescription(
-      "Elige entre opciones"
-    )
-    .addStringOption(
-      option =>
-        option
-          .setName("opciones")
-          .setDescription(
-            "Opciones separadas por comas"
-          )
-          .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName("rps")
-    .setDescription(
-      "Piedra, papel o tijera"
-    )
-    .addStringOption(
-      option =>
-        option
-          .setName("opcion")
-          .setDescription(
-            "Tu elección"
-          )
-          .setRequired(true)
-          .addChoices(
-            {
-              name: "Piedra",
-              value: "piedra"
-            },
-            {
-              name: "Papel",
-              value: "papel"
-            },
-            {
-              name: "Tijera",
-              value: "tijera"
-            }
-          )
-    ),
-
-  new SlashCommandBuilder()
-    .setName("luckroyale")
-    .setDescription(
-      "Juega Luck Royale"
+      "Muestra el uptime"
     ),
 
   new SlashCommandBuilder()
@@ -1211,79 +749,419 @@ const userCommands = [
     .setDescription(
       "Envía una sugerencia"
     )
-    .addStringOption(
-      option =>
-        option
-          .setName("texto")
-          .setDescription(
-            "Tu sugerencia"
-          )
-          .setRequired(true)
+    .addStringOption(option =>
+      option
+        .setName("texto")
+        .setDescription("Sugerencia")
+        .setRequired(true)
     ),
 
   new SlashCommandBuilder()
-    .setName("ping")
+    .setName("encuesta")
     .setDescription(
-      "Muestra el ping del bot"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("botinfo")
-    .setDescription(
-      "Información del bot"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("serverinfo")
-    .setDescription(
-      "Información del servidor"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("membercount")
-    .setDescription(
-      "Muestra los miembros"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("uptime")
-    .setDescription(
-      "Muestra el tiempo activo"
-    ),
-
-  new SlashCommandBuilder()
-    .setName("userinfo")
-    .setDescription(
-      "Muestra información de un usuario"
+      "Crea una encuesta"
     )
-    .addUserOption(
-      option =>
-        option
-          .setName("usuario")
-          .setDescription(
-            "Usuario"
-          )
-          .setRequired(false)
+    .addStringOption(option =>
+      option
+        .setName("pregunta")
+        .setDescription("Pregunta")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("opciones")
+        .setDescription(
+          "Opciones separadas por |"
+        )
+        .setRequired(true)
     ),
 
   new SlashCommandBuilder()
-    .setName("avatar")
+    .setName("recordatorio")
     .setDescription(
-      "Muestra el avatar"
+      "Crea un recordatorio"
     )
-    .addUserOption(
-      option =>
-        option
-          .setName("usuario")
-          .setDescription(
-            "Usuario"
-          )
-          .setRequired(false)
+    .addStringOption(option =>
+      option
+        .setName("tiempo")
+        .setDescription(
+          "Ejemplo: 30m, 1h, 1d"
+        )
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("mensaje")
+        .setDescription("Mensaje")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("coinflip")
+    .setDescription(
+      "Lanza una moneda"
+    ),
+
+  new SlashCommandBuilder()
+    .setName("dice")
+    .setDescription(
+      "Lanza un dado"
+    ),
+
+  new SlashCommandBuilder()
+    .setName("random")
+    .setDescription(
+      "Genera un número aleatorio"
+    )
+    .addIntegerOption(option =>
+      option
+        .setName("min")
+        .setDescription("Mínimo")
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option
+        .setName("max")
+        .setDescription("Máximo")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("choose")
+    .setDescription(
+      "Elige una opción"
+    )
+    .addStringOption(option =>
+      option
+        .setName("opciones")
+        .setDescription(
+          "Opciones separadas por comas"
+        )
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("rps")
+    .setDescription(
+      "Piedra, papel o tijera"
+    )
+    .addStringOption(option =>
+      option
+        .setName("opcion")
+        .setDescription("Tu elección")
+        .setRequired(true)
+        .addChoices(
+          {
+            name: "Piedra",
+            value: "piedra"
+          },
+          {
+            name: "Papel",
+            value: "papel"
+          },
+          {
+            name: "Tijera",
+            value: "tijera"
+          }
+        )
+    ),
+
+  new SlashCommandBuilder()
+    .setName("sorteo")
+    .setDescription(
+      "Crea un sorteo"
+    )
+    .addStringOption(option =>
+      option
+        .setName("mensaje")
+        .setDescription("Premio o mensaje")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("tiempo")
+        .setDescription(
+          "Ejemplo: 30m, 1h, 1d"
+        )
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("requisitos")
+        .setDescription(
+          "Ejemplo: 3 invites o 50 mensajes"
+        )
+        .setRequired(false)
     )
 ];
 
 // ======================================================
-// REGISTRO
+// COMANDOS ADMIN
+// ======================================================
+
+const adminCommands = [
+  new SlashCommandBuilder()
+    .setName("admin")
+    .setDescription(
+      "Abre el panel de administración"
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setbienvenida")
+    .setDescription(
+      "Configura el canal de bienvenida"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setdespedida")
+    .setDescription(
+      "Configura el canal de despedidas"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setinvitaciones")
+    .setDescription(
+      "Configura el canal de invitaciones"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setniveles")
+    .setDescription(
+      "Configura el canal de niveles"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setalianzas")
+    .setDescription(
+      "Configura el canal de alianzas"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setaffys")
+    .setDescription(
+      "Configura el canal de Affys"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setsugerencias")
+    .setDescription(
+      "Configura el canal de sugerencias"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setlogs")
+    .setDescription(
+      "Configura un canal de logs"
+    )
+    .addStringOption(option =>
+      option
+        .setName("tipo")
+        .setDescription("Tipo de log")
+        .setRequired(true)
+        .addChoices(
+          ...LOG_TYPES.map(type => ({
+            name: type,
+            value: type
+          }))
+        )
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setlogstodos")
+    .setDescription(
+      "Usa un canal para todos los logs"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("sethoneypot")
+    .setDescription(
+      "Configura el Honeypot"
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canal")
+        .setDescription("Canal"
+        )
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setstaff")
+    .setDescription(
+      "Muestra el rol de staff configurado"
+    ),
+
+  new SlashCommandBuilder()
+    .setName("ban")
+    .setDescription(
+      "Banea a un usuario"
+    )
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("razon")
+        .setDescription("Razón")
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("kick")
+    .setDescription(
+      "Expulsa a un usuario"
+    )
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("razon")
+        .setDescription("Razón")
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("mute")
+    .setDescription(
+      "Silencia a un usuario"
+    )
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option
+        .setName("minutos")
+        .setDescription("Minutos")
+        .setRequired(false)
+    )
+    .addStringOption(option =>
+      option
+        .setName("razon")
+        .setDescription("Razón")
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("warn")
+    .setDescription(
+      "Advierte a un usuario"
+    )
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("razon")
+        .setDescription("Razón")
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("warnings")
+    .setDescription(
+      "Muestra las advertencias"
+    )
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuario")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("purge")
+    .setDescription(
+      "Elimina mensajes"
+    )
+    .addIntegerOption(option =>
+      option
+        .setName("cantidad")
+        .setDescription("Cantidad")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("sorteos")
+    .setDescription(
+      "Administra sorteos"
+    ),
+
+  new SlashCommandBuilder()
+    .setName("ticketpanel")
+    .setDescription(
+      "Publica el panel de tickets"
+    )
+];
+
+// ======================================================
+// TODAS LAS COMMANDS
 // ======================================================
 
 const allCommands = [
@@ -1293,259 +1171,1743 @@ const allCommands = [
 
 const commands =
   allCommands.map(
-    command => {
-
-      if (
-        command &&
-        typeof command.toJSON ===
-          "function"
-      ) {
-        return command.toJSON();
-      }
-
-      return command;
-    }
+    command =>
+      command.toJSON()
   );
 
 // ======================================================
-// ADMIN
+// MENÚ ADMIN
 // ======================================================
 
-setupAdmin({
-  client,
-  data,
-  saveData,
-  sendLog,
-  logAction,
-  getUser,
-  prefix: PREFIX,
-  colors: COLORS,
-  symbols: E
-});
-
-// ======================================================
-// UTILIDADES
-// ======================================================
-
-function utilitiesEmbed() {
-
-  return glassEmbed({
-    title:
-      "🛠️ Utilidades",
-
-    description:
-      "Selecciona una utilidad del menú para usarla.\n\n" +
-      "Estas herramientas están disponibles para todos los miembros.",
-
-    color:
-      COLORS.info,
-
-    fields: [
-      {
-        name:
-          "📊 Información",
-        value:
-          "🏓 Ping\n" +
-          "🤖 Bot Info\n" +
-          "🖥️ Server Info\n" +
-          "👥 Miembros\n" +
-          "⏱️ Uptime",
-        inline: true
-      },
-
-      {
-        name:
-          "👤 Usuario",
-        value:
-          "👤 User Info\n" +
-          "🖼️ Avatar\n" +
-          "📨 Invitaciones",
-        inline: true
-      },
-
-      {
-        name:
-          "🎮 Diversión",
-        value:
-          "🎲 Random\n" +
-          "🎲 Dado\n" +
-          "🎯 Choose\n" +
-          "✊ Piedra Papel Tijera\n" +
-          "🔮 8Ball",
-        inline: false
-      }
-    ]
-  });
-}
-
-function utilitiesMenu() {
-
+function adminMenu() {
   return new ActionRowBuilder()
     .addComponents(
-
       new StringSelectMenuBuilder()
         .setCustomId(
-          "lrm_utilities_menu"
+          "lrm_admin_menu"
         )
         .setPlaceholder(
-          "Selecciona una utilidad..."
+          "Selecciona una categoría..."
         )
         .addOptions([
-
           {
-            label:
-              "Ping",
+            label: "Configuración",
             description:
-              "Muestra la latencia del bot",
-            value:
-              "ping",
-            emoji:
-              "🏓"
+              "Bienvenida, despedida, logs, alianzas...",
+            value: "config",
+            emoji: "🛠️"
           },
-
           {
-            label:
-              "Bot Info",
+            label: "Logs",
             description:
-              "Información de LRM Studio",
-            value:
-              "botinfo",
-            emoji:
-              "🤖"
+              "Sistema de registros",
+            value: "logs",
+            emoji: "📋"
           },
-
           {
-            label:
-              "Server Info",
+            label: "Moderación",
             description:
-              "Información del servidor",
-            value:
-              "serverinfo",
-            emoji:
-              "🖥️"
+              "Ban, kick, mute, warn...",
+            value: "moderation",
+            emoji: "🛡️"
           },
-
           {
-            label:
-              "Miembros",
+            label: "Tickets",
             description:
-              "Muestra la cantidad de miembros",
-            value:
-              "membercount",
-            emoji:
-              "👥"
+              "Sistema de tickets",
+            value: "tickets",
+            emoji: "🎫"
           },
-
           {
-            label:
-              "Uptime",
+            label: "Seguridad",
             description:
-              "Tiempo que lleva activo el bot",
-            value:
-              "uptime",
-            emoji:
-              "⏱️"
+              "Anti-spam y Honeypot",
+            value: "security",
+            emoji: "🔐"
           },
-
           {
-            label:
-              "User Info",
+            label: "Sorteos",
             description:
-              "Información sobre vos",
-            value:
-              "userinfo",
-            emoji:
-              "👤"
-          },
-
-          {
-            label:
-              "Avatar",
-            description:
-              "Muestra tu avatar",
-            value:
-              "avatar",
-            emoji:
-              "🖼️"
-          },
-
-          {
-            label:
-              "Invitaciones",
-            description:
-              "Muestra tus invitaciones",
-            value:
-              "invitever",
-            emoji:
-              "📨"
-          },
-
-          {
-            label:
-              "Random",
-            description:
-              "Genera un número aleatorio",
-            value:
-              "random",
-            emoji:
-              "🎲"
-          },
-
-          {
-            label:
-              "Dado",
-            description:
-              "Lanza un dado",
-            value:
-              "dice",
-            emoji:
-              "🎲"
-          },
-
-          {
-            label:
-              "Choose",
-            description:
-              "Elige entre varias opciones",
-            value:
-              "choose",
-            emoji:
-              "🎯"
-          },
-
-          {
-            label:
-              "Piedra Papel Tijera",
-            description:
-              "Juega contra el bot",
-            value:
-              "rps",
-            emoji:
-              "✊"
-          },
-
-          {
-            label:
-              "8Ball",
-            description:
-              "Pregunta a la bola 8",
-            value:
-              "8ball",
-            emoji:
-              "🔮"
+              "Administrar sorteos",
+            value: "giveaways",
+            emoji: "🎉"
           }
         ])
     );
 }
 
 // ======================================================
-// EJECUTAR COMANDOS
+// ADMIN EMBEDS
+// ======================================================
+
+function adminEmbed(category = "main") {
+  if (category === "config") {
+    return glassEmbed({
+      title: "🛠️ Configuración",
+      description:
+        "`/setbienvenida`\n" +
+        "`/setdespedida`\n" +
+        "`/setinvitaciones`\n" +
+        "`/setniveles`\n" +
+        "`/setalianzas`\n" +
+        "`/setaffys`\n" +
+        "`/setsugerencias`\n" +
+        "`/setlogs`\n" +
+        "`/setlogstodos`\n" +
+        "`/sethoneypot`",
+      color: COLORS.admin
+    });
+  }
+
+  if (category === "logs") {
+    return glassEmbed({
+      title: "📋 Sistema de Logs",
+      description:
+        "Los logs pueden separarse por categoría.\n\n" +
+        LOG_TYPES
+          .map(type => `• \`${type}\``)
+          .join("\n") +
+        "\n\nConfigura con `/setlogs`.",
+      color: COLORS.info
+    });
+  }
+
+  if (category === "moderation") {
+    return glassEmbed({
+      title: "🛡️ Moderación",
+      description:
+        "`/ban`\n" +
+        "`/kick`\n" +
+        "`/mute`\n" +
+        "`/warn`\n" +
+        "`/warnings`\n" +
+        "`/purge`",
+      color: COLORS.error
+    });
+  }
+
+  if (category === "tickets") {
+    return glassEmbed({
+      title: "🎫 Tickets",
+      description:
+        "`/ticketpanel`\n\n" +
+        "Los usuarios podrán abrir tickets desde el panel.",
+      color: COLORS.primary
+    });
+  }
+
+  if (category === "security") {
+    return glassEmbed({
+      title: "🔐 Seguridad",
+      description:
+        "🛡️ Anti-spam\n" +
+        "🍯 Honeypot\n" +
+        "⚠️ Advertencias automáticas\n" +
+        "🔇 Mute automático",
+      color: COLORS.security
+    });
+  }
+
+  if (category === "giveaways") {
+    return glassEmbed({
+      title: "🎉 Sorteos",
+      description:
+        "`/sorteo`\n" +
+        "`/sorteos`\n\n" +
+        "Los sorteos pueden requerir mensajes o invitaciones.",
+      color: COLORS.affy
+    });
+  }
+
+  return glassEmbed({
+    title: "⚙️ LRM Studio Admin",
+    description:
+      "Panel central de administración.\n\n" +
+      "Selecciona una categoría del menú.",
+    color: COLORS.admin
+  });
+}
+// ======================================================
+// MODERACIÓN
+// ======================================================
+
+function moderationTarget(
+  guild,
+  moderator,
+  target
+) {
+  if (!target) {
+    return "No encontré a ese usuario.";
+  }
+
+  if (
+    target.id === guild.ownerId
+  ) {
+    return "No puedes moderar al dueño del servidor.";
+  }
+
+  if (
+    target.id === moderator.id
+  ) {
+    return "No puedes moderarte a vos mismo.";
+  }
+
+  if (
+    moderator.id !== guild.ownerId &&
+    moderator.roles.highest.position <=
+      target.roles.highest.position
+  ) {
+    return (
+      "El rol del usuario está al mismo nivel o por encima del tuyo."
+    );
+  }
+
+  const bot =
+    guild.members.me;
+
+  if (
+    bot &&
+    bot.roles.highest.position <=
+      target.roles.highest.position
+  ) {
+    return (
+      "Mi rol está por debajo del rol de ese usuario."
+    );
+  }
+
+  return null;
+}
+
+async function addWarning(
+  guild,
+  userId,
+  reason,
+  moderatorId
+) {
+  const user =
+    getUser(userId);
+
+  user.warnings[guild.id] ??= [];
+
+  user.warnings[guild.id].push({
+    reason:
+      reason || "Sin razón",
+    moderator:
+      moderatorId,
+    timestamp:
+      Date.now()
+  });
+
+  saveData();
+
+  return user.warnings[guild.id].length;
+}
+
+// ======================================================
+// PARSEAR TIEMPO
+// ======================================================
+
+function parseTime(value) {
+  if (!value) return null;
+
+  const match =
+    String(value)
+      .toLowerCase()
+      .match(
+        /^(\d+)\s*(s|m|h|d)$/
+      );
+
+  if (!match) return null;
+
+  const amount =
+    Number(match[1]);
+
+  const unit =
+    match[2];
+
+  const multipliers = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000
+  };
+
+  return (
+    amount *
+    multipliers[unit]
+  );
+}
+
+// ======================================================
+// DESPEDIDA
+// ======================================================
+
+client.on(
+  "guildMemberRemove",
+  async member => {
+    try {
+      const guild =
+        member.guild;
+
+      const settings =
+        getGuildSettings(
+          guild.id
+        );
+
+      if (
+        settings.goodbyeChannel
+      ) {
+        const channel =
+          guild.channels.cache.get(
+            settings.goodbyeChannel
+          );
+
+        if (channel) {
+          const text =
+            replaceTemplate(
+              `
+👋・Hasta pronto
+
+$(user.mention) ha salido de LRM Studio. 💔
+
+👥 Miembros: $(server.member_count)
+
+¡Esperamos volver a verte pronto! ❤️
+              `,
+              {
+                "$(user.mention)":
+                  `<@${member.id}>`,
+                "$(server.member_count)":
+                  guild.memberCount
+              }
+            );
+
+          await channel.send({
+            embeds: [
+              glassEmbed({
+                title:
+                  "👋・Hasta pronto",
+                description:
+                  text,
+                color:
+                  COLORS.warning
+              })
+            ]
+          });
+        }
+      }
+
+      await logAction(
+        guild,
+        "members",
+        "👋 Miembro salió",
+        `<@${member.id}> salió del servidor.\n\n` +
+        `👥 Miembros: **${guild.memberCount}**`
+      );
+
+    } catch (error) {
+      console.error(
+        "Error guildMemberRemove:",
+        error
+      );
+    }
+  }
+);
+
+// ======================================================
+// NUEVO MIEMBRO
+// ======================================================
+
+client.on(
+  "guildMemberAdd",
+  async member => {
+    try {
+      const guild =
+        member.guild;
+
+      const settings =
+        getGuildSettings(
+          guild.id
+        );
+
+      // --------------------------------------------------
+      // BIENVENIDA
+      // --------------------------------------------------
+
+      if (
+        settings.welcomeChannel
+      ) {
+        const channel =
+          guild.channels.cache.get(
+            settings.welcomeChannel
+          );
+
+        if (channel) {
+          const text =
+            replaceTemplate(
+              `
+👋・¡Bienvenido/a a LRM Studio!
+
+¡Hey, $(user.mention)! Nos alegra tenerte por aquí. 💫
+
+Esperamos que disfrutes tu estancia, conozcas gente nueva y formes parte de nuestra comunidad.
+
+✨ Ya somos $(server.member_count) miembros en LRM Studio.
+
+¡Gracias por unirte y esperamos que la pases genial! ❤️
+
+— LRM Studio
+              `,
+              {
+                "$(user.mention)":
+                  `${member}`,
+                "$(server.member_count)":
+                  guild.memberCount
+              }
+            );
+
+          await channel.send({
+            embeds: [
+              glassEmbed({
+                title:
+                  "👋・Bienvenido/a",
+                description:
+                  text,
+                color:
+                  COLORS.primary
+              })
+            ]
+          });
+        }
+      }
+
+      // --------------------------------------------------
+      // INVITACIÓN UTILIZADA
+      // --------------------------------------------------
+
+      const invite =
+        await findUsedInvite(
+          guild
+        );
+
+      if (
+        invite &&
+        invite.inviter
+      ) {
+        data.inviteSystem[
+          guild.id
+        ] ??= {};
+
+        data.inviteSystem[
+          guild.id
+        ][
+          invite.inviter.id
+        ] ??= {
+          invites: 0
+        };
+
+        data.inviteSystem[
+          guild.id
+        ][
+          invite.inviter.id
+        ].invites++;
+
+        saveData();
+
+        if (
+          settings.inviteChannel
+        ) {
+          const channel =
+            guild.channels.cache.get(
+              settings.inviteChannel
+            );
+
+          if (channel) {
+            await channel.send({
+              embeds: [
+                glassEmbed({
+                  title:
+                    "🔗・Nueva Invitación",
+                  description:
+                    `👤 Invitador: ${invite.inviter}\n` +
+                    `📨 Invitaciones: **${
+                      data.inviteSystem[
+                        guild.id
+                      ][
+                        invite.inviter.id
+                      ].invites
+                    }**\n` +
+                    `👥 Miembros: **${guild.memberCount}**`,
+                  color:
+                    COLORS.info
+                })
+              ]
+            });
+          }
+        }
+
+        await logAction(
+          guild,
+          "invites",
+          "📨 Invitación utilizada",
+          `${member} entró mediante una invitación de ${invite.inviter}.`
+        );
+      }
+
+      await logAction(
+        guild,
+        "members",
+        "📥 Nuevo miembro",
+        `${member} entró al servidor.\n\n` +
+        `👥 Miembros: **${guild.memberCount}**`
+      );
+
+    } catch (error) {
+      console.error(
+        "Error guildMemberAdd:",
+        error
+      );
+    }
+  }
+);
+
+// ======================================================
+// ANTI-SPAM
+// ======================================================
+
+client.on(
+  "messageCreate",
+  async message => {
+    if (
+      message.author.bot ||
+      !message.guild
+    ) {
+      return;
+    }
+
+    const settings =
+      getGuildSettings(
+        message.guild.id
+      );
+
+    if (
+      !settings.antiSpamEnabled
+    ) {
+      return;
+    }
+
+    const user =
+      getUser(
+        message.author.id
+      );
+
+    user.messages++;
+
+    data.antiSpam[
+      message.guild.id
+    ] ??= {};
+
+    data.antiSpam[
+      message.guild.id
+    ][
+      message.author.id
+    ] ??= {
+      messages: [],
+      warnings: 0
+    };
+
+    const spam =
+      data.antiSpam[
+        message.guild.id
+      ][
+        message.author.id
+      ];
+
+    const now =
+      Date.now();
+
+    spam.messages =
+      spam.messages.filter(
+        timestamp =>
+          now - timestamp <
+          15000
+      );
+
+    spam.messages.push(now);
+
+    if (
+      spam.messages.length >= 5
+    ) {
+      spam.messages = [];
+
+      const warnings =
+        await addWarning(
+          message.guild,
+          message.author.id,
+          "Anti-spam: 5 mensajes seguidos",
+          client.user.id
+        );
+
+      spam.warnings = warnings;
+
+      await message.channel.send({
+        embeds: [
+          glassEmbed({
+            title:
+              "⚠️ Advertencia por spam",
+            description:
+              `${message.author} recibió una advertencia.\n\n` +
+              `⚠️ Advertencias: **${warnings}/3**\n\n` +
+              `5 mensajes seguidos detectados.`,
+            color:
+              COLORS.warning
+          })
+        ]
+      }).catch(() => {});
+
+      await logAction(
+        message.guild,
+        "security",
+        "⚠️ Anti-spam",
+        `${message.author} recibió una advertencia por enviar 5 mensajes seguidos.`,
+        COLORS.warning
+      );
+
+      if (
+        warnings >= 3
+      ) {
+        const member =
+          message.member;
+
+        if (
+          member &&
+          member.moderatable
+        ) {
+          await member.timeout(
+            60 * 60 * 1000,
+            "3 advertencias por anti-spam"
+          ).catch(() => {});
+
+          await message.channel.send({
+            embeds: [
+              glassEmbed({
+                title:
+                  "🔇 Mute automático",
+                description:
+                  `${message.author} recibió un mute de **1 hora** por alcanzar 3 advertencias de anti-spam.`,
+                color:
+                  COLORS.error
+              })
+            ]
+          }).catch(() => {});
+
+          await logAction(
+            message.guild,
+            "moderation",
+            "🔇 Mute automático",
+            `${message.author} fue muteado durante 1 hora por alcanzar 3 advertencias de anti-spam.`,
+            COLORS.error
+          );
+        }
+      }
+    }
+  }
+);
+
+// ======================================================
+// MENSAJES — PREFIX + XP + AFFY
+// ======================================================
+
+client.on(
+  "messageCreate",
+  async message => {
+    if (
+      message.author.bot ||
+      !message.guild
+    ) {
+      return;
+    }
+
+    const content =
+      message.content.trim();
+
+    // --------------------------------------------------
+    // XP
+    // --------------------------------------------------
+
+    await addXP(
+      message.author.id,
+      random(3, 8),
+      message.guild
+    );
+
+    // --------------------------------------------------
+    // PREFIJO
+    // --------------------------------------------------
+
+    if (
+      !content.startsWith(PREFIX)
+    ) {
+      return;
+    }
+
+    const args =
+      content
+        .slice(PREFIX.length)
+        .trim()
+        .split(/\s+/);
+
+    const command =
+      args
+        .shift()
+        ?.toLowerCase();
+
+    // --------------------------------------------------
+    // AFFY
+    // --------------------------------------------------
+
+    if (
+      command === "affy"
+    ) {
+      const url =
+        args.find(
+          arg =>
+            /discord(?:\.gg|\.com\/invite)\//i
+              .test(arg)
+        );
+
+      if (!url) {
+        return message.reply({
+          embeds: [
+            errorEmbed(
+              "Debes colocar una invitación de Discord.\n\n" +
+              "Ejemplo:\n`.affy https://discord.gg/ejemplo`"
+            )
+          ]
+        });
+      }
+
+      try {
+        const invite =
+          await client.fetchInvite(
+            url
+          );
+
+        if (
+          !invite.guild
+        ) {
+          return message.reply({
+            embeds: [
+              errorEmbed(
+                "No pude obtener el servidor de esa invitación."
+              )
+            ]
+          });
+        }
+
+        const partner =
+          getPartner(
+            message.guild.id,
+            invite.guild.id,
+            invite.guild.name
+          );
+
+        partner.points++;
+        partner.invites++;
+
+        saveData();
+
+        const rank =
+          getPartnerRank(
+            message.guild.id,
+            partner.points
+          );
+
+        const text =
+          replaceTemplate(
+            `
+💞・Nuevo Affy
+
+$(user.mention) ahora es Affy de LRM Studio ✨
+
+🤝 Servidor: $(invite.guild.name)
+🏆 Rank: #$(partner.rank)
+⭐ Puntos: $(partner.points)
+
+LRM Studio × $(invite.guild.name) 💞
+            `,
+            {
+              "$(user.mention)":
+                `${message.author}`,
+              "$(invite.guild.name)":
+                invite.guild.name,
+              "$(partner.rank)":
+                rank,
+              "$(partner.points)":
+                partner.points
+            }
+          );
+
+        const settings =
+          getGuildSettings(
+            message.guild.id
+          );
+
+        const channel =
+          settings.affysChannel
+            ? message.guild.channels.cache.get(
+                settings.affysChannel
+              )
+            : null;
+
+        if (!channel) {
+          return message.reply({
+            embeds: [
+              errorEmbed(
+                "No hay un canal de Affys configurado.\nUsa `/setaffys`."
+              )
+            ]
+          });
+        }
+
+        await channel.send({
+          content:
+            "@everyone",
+          embeds: [
+            glassEmbed({
+              title:
+                "💞・Nuevo Affy",
+              description:
+                text,
+              color:
+                COLORS.affy
+            })
+          ],
+          allowedMentions: {
+            parse: [
+              "everyone"
+            ]
+          }
+        });
+
+        await logAction(
+          message.guild,
+          "affy",
+          "💞 Nuevo Affy",
+          `${message.author} publicó un Affy con **${invite.guild.name}**.`,
+          COLORS.affy
+        );
+
+        return message.reply({
+          embeds: [
+            successEmbed(
+              `El Affy con **${invite.guild.name}** fue publicado correctamente.`
+            )
+          ]
+        });
+
+      } catch (error) {
+        console.error(
+          "Error Affy:",
+          error
+        );
+
+        return message.reply({
+          embeds: [
+            errorEmbed(
+              "La invitación no es válida o no pude acceder a ella."
+            )
+          ]
+        });
+      }
+    }
+
+    // --------------------------------------------------
+    // HELP
+    // --------------------------------------------------
+
+    if (
+      command === "help"
+    ) {
+      return message.reply({
+        embeds: [
+          glassEmbed({
+            title:
+              "📚 LRM Studio",
+            description:
+              "Usa `/help` para consultar todos los comandos.",
+            color:
+              COLORS.primary
+          })
+        ]
+      });
+    }
+
+    // --------------------------------------------------
+    // ADMIN
+    // --------------------------------------------------
+
+    if (
+      command === "admin"
+    ) {
+      if (
+        !isAdmin(
+          message.member
+        )
+      ) {
+        return message.reply({
+          embeds: [
+            errorEmbed(
+              "Solo los administradores pueden abrir este panel."
+            )
+          ]
+        });
+      }
+
+      return message.reply({
+        embeds: [
+          adminEmbed()
+        ],
+        components: [
+          adminMenu()
+        ]
+      });
+    }
+
+    // --------------------------------------------------
+    // PING
+    // --------------------------------------------------
+
+    if (
+      command === "ping"
+    ) {
+      return message.reply({
+        embeds: [
+          glassEmbed({
+            title:
+              "🏓 Pong",
+            description:
+              `WebSocket: **${client.ws.ping}ms**`,
+            color:
+              COLORS.success
+          })
+        ]
+      });
+    }
+  }
+);
+
+// ======================================================
+// INTERACCIONES
+// ======================================================
+
+client.on(
+  "interactionCreate",
+  async interaction => {
+    try {
+
+      // ==================================================
+      // ADMIN MENU
+      // ==================================================
+
+      if (
+        interaction.isStringSelectMenu() &&
+        interaction.customId ===
+          "lrm_admin_menu"
+      ) {
+        if (
+          !isAdmin(
+            interaction.member
+          )
+        ) {
+          return interaction.reply({
+            embeds: [
+              errorEmbed(
+                "No tienes permiso para usar este panel."
+              )
+            ],
+            ephemeral: true
+          });
+        }
+
+        return interaction.update({
+          embeds: [
+            adminEmbed(
+              interaction.values[0]
+            )
+          ],
+          components: [
+            adminMenu()
+          ]
+        });
+      }
+
+      // ==================================================
+      // ADMIN SLASH
+      // ==================================================
+
+      if (
+        interaction.isChatInputCommand() &&
+        adminCommands.some(
+          command =>
+            command.name ===
+            interaction.commandName
+        )
+      ) {
+        return executeAdminCommand(
+          interaction
+        );
+      }
+
+      // ==================================================
+      // USER SLASH
+      // ==================================================
+
+      if (
+        interaction.isChatInputCommand()
+      ) {
+        return executeUserCommand(
+          interaction
+        );
+      }
+
+    } catch (error) {
+      console.error(
+        "Error interactionCreate:",
+        error
+      );
+
+      const response = {
+        embeds: [
+          errorEmbed(
+            "Ocurrió un error ejecutando esta interacción."
+          )
+        ],
+        ephemeral: true
+      };
+
+      if (
+        interaction.replied ||
+        interaction.deferred
+      ) {
+        return interaction
+          .followUp(response)
+          .catch(() => {});
+      }
+
+      return interaction
+        .reply(response)
+        .catch(() => {});
+    }
+  }
+);
+
+// ======================================================
+// EJECUTAR ADMIN
+// ======================================================
+
+async function executeAdminCommand(
+  interaction
+) {
+  if (
+    !interaction.guild
+  ) {
+    return interaction.reply({
+      embeds: [
+        errorEmbed(
+          "Este comando solo funciona dentro de un servidor."
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  if (
+    !isAdmin(
+      interaction.member
+    )
+  ) {
+    return interaction.reply({
+      embeds: [
+        errorEmbed(
+          "Solo los administradores pueden usar este comando."
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  const command =
+    interaction.commandName;
+
+  const settings =
+    getGuildSettings(
+      interaction.guild.id
+    );
+
+  // ==================================================
+  // ADMIN
+  // ==================================================
+
+  if (
+    command === "admin"
+  ) {
+    return interaction.reply({
+      embeds: [
+        adminEmbed()
+      ],
+      components: [
+        adminMenu()
+      ]
+    });
+  }
+
+  // ==================================================
+  // CONFIGURACIONES
+  // ==================================================
+
+  const configMap = {
+    setbienvenida:
+      "welcomeChannel",
+    setdespedida:
+      "goodbyeChannel",
+    setinvitaciones:
+      "inviteChannel",
+    setniveles:
+      "levelChannel",
+    setalianzas:
+      "allianceChannel",
+    setaffys:
+      "affysChannel",
+    setsugerencias:
+      "suggestionChannel"
+  };
+
+  if (
+    configMap[command]
+  ) {
+    const channel =
+      interaction.options.getChannel(
+        "canal"
+      );
+
+    settings[
+      configMap[command]
+    ] = channel.id;
+
+    saveData();
+
+    await logAction(
+      interaction.guild,
+      "commands",
+      "⚙️ Configuración modificada",
+      `${interaction.user} configuró **${command}** → ${channel}.`
+    );
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `Configuración guardada.\n\n📌 Canal: ${channel}`
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // SET LOGS
+  // ==================================================
+
+  if (
+    command === "setlogs"
+  ) {
+    const type =
+      interaction.options.getString(
+        "tipo"
+      );
+
+    const channel =
+      interaction.options.getChannel(
+        "canal"
+      );
+
+    settings.logChannels[type] =
+      channel.id;
+
+    saveData();
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `El log **${type}** ahora se enviará en ${channel}.`
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // TODOS LOS LOGS
+  // ==================================================
+
+  if (
+    command === "setlogstodos"
+  ) {
+    const channel =
+      interaction.options.getChannel(
+        "canal"
+      );
+
+    settings.logChannels ??= {};
+
+    for (
+      const type
+      of LOG_TYPES
+    ) {
+      settings.logChannels[type] =
+        channel.id;
+    }
+
+    saveData();
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `Todos los logs fueron configurados en ${channel}.`
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // SET STAFF
+  // ==================================================
+
+  if (
+    command === "setstaff"
+  ) {
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "👮 Staff",
+          description:
+            `El sistema utiliza el rol configurado:\n\n<@&${ALLIANCE_ROLE_ID}>`,
+          color:
+            COLORS.admin
+        })
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // BAN
+  // ==================================================
+
+  if (
+    command === "ban"
+  ) {
+    const user =
+      interaction.options.getUser(
+        "usuario"
+      );
+
+    const reason =
+      interaction.options.getString(
+        "razon"
+      ) ||
+      "Sin razón";
+
+    const member =
+      await interaction.guild.members
+        .fetch(user.id)
+        .catch(() => null);
+
+    if (member) {
+      const check =
+        moderationTarget(
+          interaction.guild,
+          interaction.member,
+          member
+        );
+
+      if (check) {
+        return interaction.reply({
+          embeds: [
+            errorEmbed(check)
+          ],
+          ephemeral: true
+        });
+      }
+    }
+
+    await interaction.guild.members.ban(
+      user.id,
+      {
+        reason
+      }
+    );
+
+    await logAction(
+      interaction.guild,
+      "moderation",
+      "🔨 Usuario baneado",
+      `${user} fue baneado por ${interaction.user}.\n\n` +
+      `📝 Razón: **${reason}**`,
+      COLORS.error
+    );
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `${user} fue baneado correctamente.`
+        )
+      ]
+    });
+  }
+
+  // ==================================================
+  // KICK
+  // ==================================================
+
+  if (
+    command === "kick"
+  ) {
+    const user =
+      interaction.options.getUser(
+        "usuario"
+      );
+
+    const reason =
+      interaction.options.getString(
+        "razon"
+      ) ||
+      "Sin razón";
+
+    const member =
+      await interaction.guild.members
+        .fetch(user.id)
+        .catch(() => null);
+
+    if (!member) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "No encontré al usuario en el servidor."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    const check =
+      moderationTarget(
+        interaction.guild,
+        interaction.member,
+        member
+      );
+
+    if (check) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(check)
+        ],
+        ephemeral: true
+      });
+    }
+
+    await member.kick(
+      reason
+    );
+
+    await logAction(
+      interaction.guild,
+      "moderation",
+      "👢 Usuario expulsado",
+      `${user} fue expulsado por ${interaction.user}.\n\n` +
+      `📝 Razón: **${reason}**`,
+      COLORS.error
+    );
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `${user} fue expulsado correctamente.`
+        )
+      ]
+    });
+  }
+
+  // ==================================================
+  // MUTE
+  // ==================================================
+
+  if (
+    command === "mute"
+  ) {
+    const user =
+      interaction.options.getUser(
+        "usuario"
+      );
+
+    const minutes =
+      interaction.options.getInteger(
+        "minutos"
+      ) || 60;
+
+    const reason =
+      interaction.options.getString(
+        "razon"
+      ) ||
+      "Sin razón";
+
+    const member =
+      await interaction.guild.members
+        .fetch(user.id)
+        .catch(() => null);
+
+    if (!member) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "No encontré al usuario."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    const check =
+      moderationTarget(
+        interaction.guild,
+        interaction.member,
+        member
+      );
+
+    if (check) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(check)
+        ],
+        ephemeral: true
+      });
+    }
+
+    await member.timeout(
+      minutes * 60 * 1000,
+      reason
+    );
+
+    await logAction(
+      interaction.guild,
+      "moderation",
+      "🔇 Usuario muteado",
+      `${user} fue muteado por **${minutes} minutos**.\n\n` +
+      `📝 Razón: **${reason}**`,
+      COLORS.error
+    );
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `${user} fue muteado durante **${minutes} minutos**.`
+        )
+      ]
+    });
+  }
+
+  // ==================================================
+  // WARN
+  // ==================================================
+
+  if (
+    command === "warn"
+  ) {
+    const user =
+      interaction.options.getUser(
+        "usuario"
+      );
+
+    const reason =
+      interaction.options.getString(
+        "razon"
+      ) ||
+      "Sin razón";
+
+    const member =
+      await interaction.guild.members
+        .fetch(user.id
+        )
+        .catch(() => null);
+
+    if (member) {
+      const check =
+        moderationTarget(
+          interaction.guild,
+          interaction.member,
+          member
+        );
+
+      if (check) {
+        return interaction.reply({
+          embeds: [
+            errorEmbed(check)
+          ],
+          ephemeral: true
+        });
+      }
+    }
+
+    const count =
+      await addWarning(
+        interaction.guild,
+        user.id,
+        reason,
+        interaction.user.id
+      );
+
+    await logAction(
+      interaction.guild,
+      "moderation",
+      "⚠️ Advertencia",
+      `${user} recibió una advertencia de ${interaction.user}.\n\n` +
+      `📝 Razón: **${reason}**\n` +
+      `⚠️ Total: **${count}**`,
+      COLORS.warning
+    );
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `${user} recibió una advertencia.\n\n` +
+          `⚠️ Total: **${count}**`
+        )
+      ]
+    });
+  }
+
+  // ==================================================
+  // WARNINGS
+  // ==================================================
+
+  if (
+    command === "warnings"
+  ) {
+    const user =
+      interaction.options.getUser(
+        "usuario"
+      );
+
+    const profile =
+      getUser(
+        user.id
+      );
+
+    const warnings =
+      profile.warnings[
+        interaction.guild.id
+      ] || [];
+
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "⚠️ Advertencias",
+          description:
+            `${user}\n\n` +
+            (
+              warnings.length
+                ? warnings
+                    .map(
+                      (warning, index) =>
+                        `**${index + 1}.** ${warning.reason}`
+                    )
+                    .join("\n")
+                : "No tiene advertencias."
+            ),
+          color:
+            COLORS.warning
+        })
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // PURGE
+  // ==================================================
+
+  if (
+    command === "purge"
+  ) {
+    const amount =
+      interaction.options.getInteger(
+        "cantidad"
+      );
+
+    if (
+      amount < 1 ||
+      amount > 100
+    ) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "La cantidad debe estar entre 1 y 100."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    const deleted =
+      await interaction.channel.bulkDelete(
+        amount,
+        true
+      );
+
+    await logAction(
+      interaction.guild,
+      "moderation",
+      "🧹 Mensajes eliminados",
+      `${interaction.user} eliminó **${deleted.size} mensajes** en ${interaction.channel}.`
+    );
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `Se eliminaron **${deleted.size} mensajes**.`
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // HONEYPOT
+  // ==================================================
+
+  if (
+    command === "sethoneypot"
+  ) {
+    const channel =
+      interaction.options.getChannel(
+        "canal"
+      );
+
+    settings.honeypotChannel =
+      channel.id;
+
+    saveData();
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `🍯 Honeypot configurado en ${channel}.`
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // TICKET PANEL
+  // ==================================================
+
+  if (
+    command === "ticketpanel"
+  ) {
+    const channel =
+      settings.ticketChannel
+        ? interaction.guild.channels.cache.get(
+            settings.ticketChannel
+          )
+        : interaction.channel;
+
+    const button =
+      new ButtonBuilder()
+        .setCustomId(
+          "lrm_ticket_open"
+        )
+        .setLabel(
+          "Abrir Ticket"
+        )
+        .setEmoji("🎫")
+        .setStyle(
+          ButtonStyle.Primary
+        );
+
+    await channel.send({
+      embeds: [
+        glassEmbed({
+          title:
+            "🎫・Soporte LRM Studio",
+          description:
+            "¿Necesitas ayuda?\n\n" +
+            "Presiona el botón para abrir un ticket.",
+          color:
+            COLORS.primary
+        })
+      ],
+      components: [
+        new ActionRowBuilder()
+          .addComponents(
+            button
+          )
+      ]
+    });
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `Panel enviado en ${channel}.`
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // SORTEOS
+  // ==================================================
+
+  if (
+    command === "sorteos"
+  ) {
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "🎉 Sorteos",
+          description:
+            "Usa `/sorteo` para crear un sorteo.\n\n" +
+            "Los sorteos activos se guardan en `data.json`.",
+          color:
+            COLORS.affy
+        })
+      ],
+      ephemeral: true
+    });
+  }
+
+  return interaction.reply({
+    embeds: [
+      errorEmbed(
+        "Comando administrativo no encontrado."
+      )
+    ],
+    ephemeral: true
+  });
+}
+
+// ======================================================
+// COMANDOS DE USUARIO
 // ======================================================
 
 async function executeUserCommand(
   interaction
 ) {
-
   const command =
     interaction.commandName;
 
@@ -1554,579 +2916,77 @@ async function executeUserCommand(
       interaction.user.id
     );
 
-  // ====================================================
+  // ==================================================
   // HELP
-  // ====================================================
+  // ==================================================
 
   if (
     command === "help"
   ) {
-
     return interaction.reply({
       embeds: [
         glassEmbed({
           title:
             "📚 LRM Studio",
-
           description:
-            "Selecciona una categoría desde el menú para consultar los comandos disponibles.",
-
-          color:
-            COLORS.primary,
-
+            "Comandos disponibles:",
           fields: [
-
             {
               name:
-                "📚 General",
+                "👤 Usuario",
               value:
-                "`/help` `/utilidades` `/ping` `/botinfo`",
-              inline:
-                false
+                "`/perfil` `/avatar` `/userinfo` `/actividad` `/logros` `/racha`"
             },
-
             {
               name:
-                "🎮 Economía",
+                "📊 Comunidad",
               value:
-                "`/balance` `/work` `/risk` `/crime` `/daily` `/dep` `/with` `/pay`",
-              inline:
-                false
+                "`/rank` `/top` `/sugerencia` `/encuesta` `/recordatorio`"
             },
-
             {
               name:
-                "🏆 Perfil",
+                "🎮 Diversión",
               value:
-                "`/profile` `/inventory` `/rank` `/leveltop` `/baltop`",
-              inline:
-                false
+                "`/coinflip` `/dice` `/random` `/choose` `/rps`"
             },
-
             {
               name:
-                "📊 Diversión",
+                "ℹ️ Información",
               value:
-                "`/coinflip` `/8ball` `/random` `/dice` `/choose` `/rps` `/luckroyale`",
-              inline:
-                false
+                "`/ping` `/botinfo` `/serverinfo` `/membercount` `/uptime` `/invitever`"
             },
-
             {
               name:
-                "ℹ️ Servidor",
+                "🎉 Eventos",
               value:
-                "`/serverinfo` `/membercount` `/userinfo` `/avatar` `/uptime`",
-              inline:
-                false
+                "`/sorteo`"
             }
-          ]
-        })
-      ]
-    });
-  }
-
-  // ====================================================
-  // UTILIDADES
-  // ====================================================
-
-  if (
-    command === "utilidades"
-  ) {
-
-    return interaction.reply({
-      embeds: [
-        utilitiesEmbed()
-      ],
-      components: [
-        utilitiesMenu()
-      ]
-    });
-  }
-
-  // ====================================================
-  // BALANCE
-  // ====================================================
-
-  if (
-    command === "balance"
-  ) {
-
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            `${E.money} Balance`,
-          description:
-            `💰 Wallet: **${user.wallet} Coins Nisk**\n` +
-            `🏦 Banco: **${user.bank} Coins Nisk**\n\n` +
-            `💵 Total: **${user.wallet + user.bank} Coins Nisk**`,
+          ],
           color:
-            COLORS.economy
+            COLORS.primary
         })
       ]
     });
   }
 
-  // ====================================================
-  // WORK
-  // ====================================================
+  // ==================================================
+  // PERFIL
+  // ==================================================
 
   if (
-    command === "work"
+    command === "perfil"
   ) {
-
-    const cd =
-      cooldown(
-        user,
-        "work",
-        30
-      );
-
-    if (cd) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            `${E.time} Debes esperar **${cd}s** para volver a trabajar.`
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    const amount =
-      random(20, 30);
-
-    user.wallet += amount;
-
-    addXP(
-      interaction.user.id,
-      random(3, 8),
-      interaction.guild
-    );
-
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        successEmbed(
-          `💼 Trabajaste y ganaste **${amount} Coins Nisk**.\n\n` +
-          `💰 Wallet: **${user.wallet}**`
-        )
-      ]
-    });
-  }
-
-  // ====================================================
-  // RISK
-  // ====================================================
-
-  if (
-    command === "risk"
-  ) {
-
-    const cd =
-      cooldown(
-        user,
-        "risk",
-        60
-      );
-
-    if (cd) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            `${E.time} Debes esperar **${cd}s**.`
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    const won =
-      Math.random() < 0.30;
-
-    if (won) {
-
-      const amount =
-        random(40, 70);
-
-      user.wallet += amount;
-
-      addXP(
-        interaction.user.id,
-        random(3, 8),
-        interaction.guild
-      );
-
-      saveData();
-
-      return interaction.reply({
-        embeds: [
-          successEmbed(
-            `🎯 Ganaste **${amount} Coins Nisk**.\n\n` +
-            `💰 Wallet: **${user.wallet}**`
-          )
-        ]
-      });
-    }
-
-    const loss =
-      random(50, 100);
-
-    user.wallet -= loss;
-
-    addXP(
-      interaction.user.id,
-      random(3, 8),
-      interaction.guild
-    );
-
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        errorEmbed(
-          `💥 Perdiste **${loss} Coins Nisk**.\n\n` +
-          `💰 Wallet: **${user.wallet}**`
-        )
-      ]
-    });
-  }
-
-  // ====================================================
-  // CRIME
-  // ====================================================
-
-  if (
-    command === "crime"
-  ) {
-
-    const cd =
-      cooldown(
-        user,
-        "crime",
-        120
-      );
-
-    if (cd) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            `${E.time} Debes esperar **${cd}s**.`
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    const won =
-      Math.random() < 0.20;
-
-    if (won) {
-
-      const amount =
-        random(50, 80);
-
-      user.wallet += amount;
-
-      addXP(
-        interaction.user.id,
-        random(3, 8),
-        interaction.guild
-      );
-
-      saveData();
-
-      return interaction.reply({
-        embeds: [
-          successEmbed(
-            `🕶️ Salió bien y ganaste **${amount} Coins Nisk**.\n\n` +
-            `💰 Wallet: **${user.wallet}**`
-          )
-        ]
-      });
-    }
-
-    const loss =
-      random(70, 200);
-
-    user.wallet -= loss;
-
-    addXP(
-      interaction.user.id,
-      random(3, 8),
-      interaction.guild
-    );
-
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        errorEmbed(
-          `🚨 Fallaste y perdiste **${loss} Coins Nisk**.\n\n` +
-          `💰 Wallet: **${user.wallet}**`
-        )
-      ]
-    });
-  }
-
-  // ====================================================
-  // DAILY
-  // ====================================================
-
-  if (
-    command === "daily"
-  ) {
-
-    const cd =
-      cooldown(
-        user,
-        "daily",
-        86400
-      );
-
-    if (cd) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            `${E.time} Ya reclamaste tu recompensa. Espera **${cd}s**.`
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    user.wallet += 50;
-
-    addXP(
-      interaction.user.id,
-      random(3, 8),
-      interaction.guild
-    );
-
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        successEmbed(
-          `🎁 Recibiste **50 Coins Nisk** como recompensa diaria.\n\n` +
-          `💰 Wallet: **${user.wallet}**`
-        )
-      ]
-    });
-  }
-
-  // ====================================================
-  // DEP
-  // ====================================================
-
-  if (
-    command === "dep"
-  ) {
-
-    const amount =
-      interaction.options.getInteger(
-        "cantidad"
-      );
-
-    if (amount <= 0) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "La cantidad debe ser mayor que 0."
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    if (
-      user.wallet < amount
-    ) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "No tienes suficiente dinero en tu wallet."
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    user.wallet -= amount;
-    user.bank += amount;
-
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        successEmbed(
-          `🏦 Depositaste **${amount} Coins Nisk**.\n\n` +
-          `💰 Wallet: **${user.wallet}**\n` +
-          `🏦 Banco: **${user.bank}**`
-        )
-      ]
-    });
-  }
-
-  // ====================================================
-  // WITH
-  // ====================================================
-
-  if (
-    command === "with"
-  ) {
-
-    const amount =
-      interaction.options.getInteger(
-        "cantidad"
-      );
-
-    if (amount <= 0) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "La cantidad debe ser mayor que 0."
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    if (
-      user.bank < amount
-    ) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "No tienes suficiente dinero en el banco."
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    user.bank -= amount;
-    user.wallet += amount;
-
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        successEmbed(
-          `💵 Retiraste **${amount} Coins Nisk**.\n\n` +
-          `💰 Wallet: **${user.wallet}**\n` +
-          `🏦 Banco: **${user.bank}**`
-        )
-      ]
-    });
-  }
-
-  // ====================================================
-  // PAY
-  // ====================================================
-
-  if (
-    command === "pay"
-  ) {
-
-    const target =
-      interaction.options.getUser(
-        "usuario"
-      );
-
-    const amount =
-      interaction.options.getInteger(
-        "cantidad"
-      );
-
-    if (
-      target.id ===
-      interaction.user.id
-    ) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "No puedes pagarte a vos mismo."
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    if (amount <= 0) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "La cantidad debe ser mayor que 0."
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    if (
-      user.wallet < amount
-    ) {
-
-      return interaction.reply({
-        embeds: [
-          errorEmbed(
-            "No tienes suficiente dinero."
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    const receiver =
-      getUser(target.id);
-
-    user.wallet -= amount;
-    receiver.wallet += amount;
-
-    saveData();
-
-    return interaction.reply({
-      embeds: [
-        successEmbed(
-          `⇄ Enviaste **${amount} Coins Nisk** a ${target}.\n\n` +
-          `💰 Tu wallet: **${user.wallet}**`
-        )
-      ]
-    });
-  }
-
-  // ====================================================
-  // PROFILE
-  // ====================================================
-
-  if (
-    command === "profile"
-  ) {
-
     return interaction.reply({
       embeds: [
         glassEmbed({
           title:
-            `${E.user} Perfil`,
+            "👤 Perfil",
           description:
-            `👤 Usuario: ${interaction.user}\n\n` +
-            `💰 Coins: **${user.wallet}**\n` +
-            `🏦 Banco: **${user.bank}**\n` +
+            `${interaction.user}\n\n` +
+            `✦ Nivel: **${user.level}**\n` +
             `⭐ XP: **${user.xp}**\n` +
-            `✦ Nivel: **${user.level}**`,
+            `💬 Mensajes: **${user.messages}**\n` +
+            `🔥 Racha: **${user.streak}**`,
           color:
             COLORS.primary
         })
@@ -2134,66 +2994,24 @@ async function executeUserCommand(
     });
   }
 
-  // ====================================================
-  // INVENTORY
-  // ====================================================
-
-  if (
-    command === "inventory"
-  ) {
-
-    const inventory =
-      user.inventory.length
-        ? user.inventory
-            .map(
-              (item, index) =>
-                `**${index + 1}.** ${item}`
-            )
-            .join("\n")
-        : "◇ Tu inventario está vacío.";
-
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            `${E.inventory} Inventario`,
-          description:
-            inventory,
-          color:
-            COLORS.primary
-        })
-      ]
-    });
-  }
-
-  // ====================================================
+  // ==================================================
   // RANK
-  // ====================================================
+  // ==================================================
 
   if (
     command === "rank"
   ) {
-
-    const ranking =
-      getRank(
-        interaction.guild
-      );
-
-    const position =
-      ranking.findIndex(
-        x =>
-          x.id ===
-          interaction.user.id
-      ) + 1;
-
     return interaction.reply({
       embeds: [
         glassEmbed({
           title:
-            `${E.level} Ranking`,
+            "🏆 Ranking",
           description:
-            `👤 ${interaction.user}\n\n` +
-            `🏆 Rank: **#${position || "?"}**\n` +
+            `${interaction.user}\n\n` +
+            `🏆 Posición: **#${getRank(
+              interaction.guild,
+              interaction.user.id
+            )}**\n` +
             `✦ Nivel: **${user.level}**\n` +
             `⭐ XP: **${user.xp}**`,
           color:
@@ -2203,48 +3021,66 @@ async function executeUserCommand(
     });
   }
 
-  // ====================================================
-  // SHOP
-  // ====================================================
+  // ==================================================
+  // TOP
+  // ==================================================
 
   if (
-    command === "shop"
+    command === "top"
   ) {
+    const ranking =
+      Object.entries(
+        data.users
+      )
+        .sort(
+          (a, b) =>
+            (b[1].xp || 0) -
+            (a[1].xp || 0)
+        )
+        .slice(0, 10);
+
+    const text =
+      ranking.length
+        ? ranking
+            .map(
+              ([id, profile], index) =>
+                `**#${index + 1}** <@${id}> — Nivel **${profile.level || 1}** · ${profile.xp || 0} XP`
+            )
+            .join("\n")
+        : "Todavía no hay datos.";
 
     return interaction.reply({
       embeds: [
         glassEmbed({
           title:
-            `${E.shop} Tienda`,
+            "🏆 Top LRM Studio",
           description:
-            "🛒 Actualmente puedes consultar los artículos configurados en la tienda.",
+            text,
           color:
-            COLORS.economy
+            COLORS.level
         })
       ]
     });
   }
 
-  // ====================================================
-  // COINFLIP
-  // ====================================================
+  // ==================================================
+  // ACTIVIDAD
+  // ==================================================
 
   if (
-    command === "coinflip"
+    command === "actividad"
   ) {
-
-    const result =
-      Math.random() < 0.5
-        ? "🪙 Cara"
-        : "🪙 Cruz";
-
     return interaction.reply({
       embeds: [
         glassEmbed({
           title:
-            "🪙 Coinflip",
+            "📊 Tu actividad",
           description:
-            `Resultado: **${result}**`,
+            `${interaction.user}\n\n` +
+            `💬 Mensajes: **${user.messages}**\n` +
+            `✦ Nivel: **${user.level}**\n` +
+            `⭐ XP: **${user.xp}**\n` +
+            `🔥 Racha: **${user.streak} días**`,
           color:
             COLORS.info
         })
@@ -2252,74 +3088,344 @@ async function executeUserCommand(
     });
   }
 
-  // ====================================================
-  // 8BALL
-  // ====================================================
+  // ==================================================
+  // LOGROS
+  // ==================================================
 
   if (
-    command === "8ball"
+    command === "logros"
   ) {
+    const achievements =
+      user.achievements || [];
 
-    const answers = [
-      "Sí.",
-      "No.",
-      "Probablemente.",
-      "No estoy seguro.",
-      "Definitivamente.",
-      "Puede ser.",
-      "Las posibilidades son altas.",
-      "Mejor no contar con ello."
-    ];
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "🏆 Logros",
+          description:
+            achievements.length
+              ? achievements
+                  .map(
+                    item =>
+                      `🏆 ${item}`
+                  )
+                  .join("\n")
+              : "Todavía no tienes logros desbloqueados.",
+          color:
+            COLORS.warning
+        })
+      ]
+    });
+  }
 
-    const question =
+  // ==================================================
+  // RACHA
+  // ==================================================
+
+  if (
+    command === "racha"
+  ) {
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "🔥 Racha",
+          description:
+            `${interaction.user}\n\n` +
+            `🔥 Racha actual: **${user.streak} días**`,
+          color:
+            COLORS.warning
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // AVATAR
+  // ==================================================
+
+  if (
+    command === "avatar"
+  ) {
+    const target =
+      interaction.options.getUser(
+        "usuario"
+      ) ||
+      interaction.user;
+
+    const avatar =
+      target.displayAvatarURL({
+        size: 4096,
+        extension: "png"
+      });
+
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "🖼️ Avatar",
+          description:
+            `[Abrir avatar completo](${avatar})`,
+          color:
+            COLORS.info,
+          image:
+            avatar
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // USERINFO
+  // ==================================================
+
+  if (
+    command === "userinfo"
+  ) {
+    const target =
+      interaction.options.getUser(
+        "usuario"
+      ) ||
+      interaction.user;
+
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "👤 User Info",
+          description:
+            `👤 Usuario: ${target}\n` +
+            `🏷️ Tag: **${target.tag}**\n` +
+            `🆔 ID: \`${target.id}\`\n` +
+            `🤖 Bot: **${target.bot ? "Sí" : "No"}**\n` +
+            `📅 Cuenta: <t:${Math.floor(
+              target.createdTimestamp / 1000
+            )}:R>`,
+          color:
+            COLORS.info
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // SERVERINFO
+  // ==================================================
+
+  if (
+    command === "serverinfo"
+  ) {
+    const guild =
+      interaction.guild;
+
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "🖥️ Server Info",
+          description:
+            `🏠 **${guild.name}**\n` +
+            `🆔 \`${guild.id}\`\n` +
+            `👥 Miembros: **${guild.memberCount}**\n` +
+            `👑 Owner: <@${guild.ownerId}>\n` +
+            `📅 Creado: <t:${Math.floor(
+              guild.createdTimestamp / 1000
+            )}:R>`,
+          color:
+            COLORS.info
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // MEMBERCOUNT
+  // ==================================================
+
+  if (
+    command === "membercount"
+  ) {
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "👥 Miembros",
+          description:
+            `Este servidor tiene **${interaction.guild.memberCount} miembros**.`,
+          color:
+            COLORS.info
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // BOTINFO
+  // ==================================================
+
+  if (
+    command === "botinfo"
+  ) {
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "🤖 LRM Studio",
+          description:
+            `🌐 Servidores: **${client.guilds.cache.size}**\n` +
+            `👥 Usuarios: **${client.users.cache.size}**\n` +
+            `⚙️ Discord.js: **14.x**`,
+          color:
+            COLORS.primary
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // PING
+  // ==================================================
+
+  if (
+    command === "ping"
+  ) {
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "🏓 Pong",
+          description:
+            `WebSocket: **${client.ws.ping}ms**`,
+          color:
+            COLORS.success
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // UPTIME
+  // ==================================================
+
+  if (
+    command === "uptime"
+  ) {
+    const total =
+      Math.floor(
+        client.uptime / 1000
+      );
+
+    const days =
+      Math.floor(
+        total / 86400
+      );
+
+    const hours =
+      Math.floor(
+        (total % 86400) / 3600
+      );
+
+    const minutes =
+      Math.floor(
+        (total % 3600) / 60
+      );
+
+    const seconds =
+      total % 60;
+
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "⏱️ Uptime",
+          description:
+            `🟢 **${days}d ${hours}h ${minutes}m ${seconds}s**`,
+          color:
+            COLORS.success
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // INVITEVER
+  // ==================================================
+
+  if (
+    command === "invitever"
+  ) {
+    const invites =
+      data.inviteSystem
+        ?.[interaction.guild.id]
+        ?.[interaction.user.id]
+        ?.invites || 0;
+
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "📨 Invitaciones",
+          description:
+            `${interaction.user}\n\n` +
+            `📨 Invitaciones: **${invites}**`,
+          color:
+            COLORS.info
+        })
+      ]
+    });
+  }
+
+  // ==================================================
+  // SUGERENCIA
+  // ==================================================
+
+  if (
+    command === "sugerencia"
+  ) {
+    const text =
       interaction.options.getString(
-        "pregunta"
+        "texto"
       );
 
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "🔮 8Ball",
-          description:
-            `❓ **${question}**\n\n` +
-            `🔮 ${answers[
-              random(
-                0,
-                answers.length - 1
-              )
-            ]}`,
-          color:
-            COLORS.info
-        })
-      ]
-    });
-  }
-
-  // ====================================================
-  // RANDOM
-  // ====================================================
-
-  if (
-    command === "random"
-  ) {
-
-    const min =
-      interaction.options.getInteger(
-        "min"
+    const settings =
+      getGuildSettings(
+        interaction.guild.id
       );
 
-    const max =
-      interaction.options.getInteger(
-        "max"
-      );
+    const channel =
+      settings.suggestionChannel
+        ? interaction.guild.channels.cache.get(
+            settings.suggestionChannel
+          )
+        : null;
 
-    if (min > max) {
+    const embed =
+      glassEmbed({
+        title:
+          "💡・Nueva sugerencia",
+        description:
+          `${interaction.user}\n\n> ${text}`,
+        color:
+          COLORS.warning
+      });
+
+    if (channel) {
+      await channel.send({
+        embeds: [embed]
+      });
+
+      await logAction(
+        interaction.guild,
+        "suggestions",
+        "💡 Sugerencia",
+        `${interaction.user} envió una sugerencia.`
+      );
 
       return interaction.reply({
         embeds: [
-          errorEmbed(
-            "El mínimo no puede ser mayor que el máximo."
+          successEmbed(
+            "Tu sugerencia fue enviada correctamente."
           )
         ],
         ephemeral: true
@@ -2327,12 +3433,226 @@ async function executeUserCommand(
     }
 
     return interaction.reply({
+      embeds: [embed]
+    });
+  }
+
+  // ==================================================
+  // ENCUESTA
+  // ==================================================
+
+  if (
+    command === "encuesta"
+  ) {
+    const question =
+      interaction.options.getString(
+        "pregunta"
+      );
+
+    const raw =
+      interaction.options.getString(
+        "opciones"
+      );
+
+    const options =
+      raw
+        .split("|")
+        .map(
+          x => x.trim()
+        )
+        .filter(Boolean)
+        .slice(0, 5);
+
+    if (
+      options.length < 2
+    ) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "Necesitas al menos 2 opciones separadas por `|`."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    const letters = [
+      "🇦",
+      "🇧",
+      "🇨",
+      "🇩",
+      "🇪"
+    ];
+
+    const embed =
+      glassEmbed({
+        title:
+          "📊・Encuesta",
+        description:
+          `**${question}**\n\n` +
+          options
+            .map(
+              (option, index) =>
+                `${letters[index]} ${option}`
+            )
+            .join("\n"),
+        color:
+          COLORS.info
+      });
+
+    const sent =
+      await interaction.channel.send({
+        embeds: [embed]
+      });
+
+    for (
+      let i = 0;
+      i < options.length;
+      i++
+    ) {
+      await sent.react(
+        letters[i]
+      ).catch(() => {});
+    }
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          "Encuesta creada correctamente."
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // RECORDATORIO
+  // ==================================================
+
+  if (
+    command === "recordatorio"
+  ) {
+    const time =
+      interaction.options.getString(
+        "tiempo"
+      );
+
+    const text =
+      interaction.options.getString(
+        "mensaje"
+      );
+
+    const milliseconds =
+      parseTime(time);
+
+    if (
+      !milliseconds
+    ) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "Tiempo inválido. Usa formatos como `30m`, `1h` o `1d`."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    if (
+      milliseconds >
+      7 * 24 * 60 * 60 * 1000
+    ) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "El máximo es 7 días."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    const id =
+      `${interaction.user.id}-${Date.now()}`;
+
+    data.reminders[id] = {
+      userId:
+        interaction.user.id,
+      channelId:
+        interaction.channel.id,
+      guildId:
+        interaction.guild.id,
+      message:
+        text,
+      executeAt:
+        Date.now() + milliseconds
+    };
+
+    saveData();
+
+    setTimeout(
+      async () => {
+        const reminder =
+          data.reminders[id];
+
+        if (!reminder) return;
+
+        const channel =
+          interaction.guild.channels.cache.get(
+            reminder.channelId
+          );
+
+        if (channel) {
+          await channel.send({
+            content:
+              `<@${reminder.userId}>`,
+            embeds: [
+              glassEmbed({
+                title:
+                  "⏰・Recordatorio",
+                description:
+                  reminder.message,
+                color:
+                  COLORS.warning
+              })
+            ]
+          }).catch(() => {});
+        }
+
+        delete data.reminders[id];
+        saveData();
+      },
+      milliseconds
+    );
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          `Recordatorio creado para dentro de **${time}**.`
+        )
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ==================================================
+  // COINFLIP
+  // ==================================================
+
+  if (
+    command === "coinflip"
+  ) {
+    return interaction.reply({
       embeds: [
         glassEmbed({
           title:
-            `${E.random} Random`,
+            "🪙 Coinflip",
           description:
-            `🎲 Resultado: **${random(min, max)}**`,
+            `Resultado: **${
+              Math.random() < 0.5
+                ? "Cara"
+                : "Cruz"
+            }**`,
           color:
             COLORS.info
         })
@@ -2340,14 +3660,13 @@ async function executeUserCommand(
     });
   }
 
-  // ====================================================
+  // ==================================================
   // DICE
-  // ====================================================
+  // ==================================================
 
   if (
     command === "dice"
   ) {
-
     return interaction.reply({
       embeds: [
         glassEmbed({
@@ -2362,14 +3681,57 @@ async function executeUserCommand(
     });
   }
 
-  // ====================================================
+  // ==================================================
+  // RANDOM
+  // ==================================================
+
+  if (
+    command === "random"
+  ) {
+    const min =
+      interaction.options.getInteger(
+        "min"
+      );
+
+    const max =
+      interaction.options.getInteger(
+        "max"
+      );
+
+    if (
+      min > max
+    ) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "El mínimo no puede ser mayor que el máximo."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    return interaction.reply({
+      embeds: [
+        glassEmbed({
+          title:
+            "🎲 Random",
+          description:
+            `Resultado: **${random(min, max)}**`,
+          color:
+            COLORS.info
+        })
+      ]
+    });
+  }
+
+  // ==================================================
   // CHOOSE
-  // ====================================================
+  // ==================================================
 
   if (
     command === "choose"
   ) {
-
     const raw =
       interaction.options.getString(
         "opciones"
@@ -2386,24 +3748,15 @@ async function executeUserCommand(
     if (
       options.length < 2
     ) {
-
       return interaction.reply({
         embeds: [
           errorEmbed(
-            "Debes colocar al menos 2 opciones separadas por comas."
+            "Necesitas al menos 2 opciones."
           )
         ],
         ephemeral: true
       });
     }
-
-    const choice =
-      options[
-        random(
-          0,
-          options.length - 1
-        )
-      ];
 
     return interaction.reply({
       embeds: [
@@ -2411,7 +3764,14 @@ async function executeUserCommand(
           title:
             "🎯 Choose",
           description:
-            `La opción elegida es:\n\n> **${choice}**`,
+            `Elegí:\n\n> **${
+              options[
+                random(
+                  0,
+                  options.length - 1
+                )
+              ]
+            }**`,
           color:
             COLORS.info
         })
@@ -2419,14 +3779,13 @@ async function executeUserCommand(
     });
   }
 
-  // ====================================================
+  // ==================================================
   // RPS
-  // ====================================================
+  // ==================================================
 
   if (
     command === "rps"
   ) {
-
     const player =
       interaction.options.getString(
         "opcion"
@@ -2448,10 +3807,8 @@ async function executeUserCommand(
     if (
       player === bot
     ) {
-
       result =
         "🤝 Empate.";
-
     } else if (
       (
         player === "piedra" &&
@@ -2466,14 +3823,11 @@ async function executeUserCommand(
         bot === "papel"
       )
     ) {
-
       result =
         "🏆 Ganaste.";
-
     } else {
-
       result =
-        "💥 Gané yo.";
+        "🤖 Gané yo.";
     }
 
     return interaction.reply({
@@ -2482,8 +3836,8 @@ async function executeUserCommand(
           title:
             "✊ Piedra, Papel o Tijera",
           description:
-            `👤 Tu elección: **${player}**\n` +
-            `🤖 Mi elección: **${bot}**\n\n` +
+            `👤 **${player}**\n` +
+            `🤖 **${bot}**\n\n` +
             result,
           color:
             COLORS.info
@@ -2492,320 +3846,157 @@ async function executeUserCommand(
     });
   }
 
-  // ====================================================
-  // LUCK ROYALE
-  // ====================================================
+  // ==================================================
+  // SORTEO
+  // ==================================================
 
   if (
-    command === "luckroyale"
+    command === "sorteo"
   ) {
-
-    return startLuckRoyale(
-      interaction
-    );
-  }
-
-  // ====================================================
-  // INVITEVER
-  // ====================================================
-
-  if (
-    command === "invitever"
-  ) {
-
-    const inviteData =
-      data.inviteSystem
-        ?.[interaction.guild.id]
-        ?.[interaction.user.id];
-
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "📨 Invitaciones",
-          description:
-            `${interaction.user}\n\n` +
-            `📨 Invitaciones: **${inviteData?.invites || 0}**`,
-          color:
-            COLORS.info
-        })
-      ]
-    });
-  }
-
-  // ====================================================
-  // SUGERENCIA
-  // ====================================================
-
-  if (
-    command === "sugerencia"
-  ) {
-
-    const suggestion =
-      interaction.options.getString(
-        "texto"
-      );
-
-    const settings =
-      getGuildSettings(
-        interaction.guild.id
-      );
-
-    const channel =
-      settings.suggestionChannel
-        ? interaction.guild.channels.cache.get(
-            settings.suggestionChannel
-          )
-        : null;
-
-    const embed =
-      glassEmbed({
-        title:
-          "💡 Sugerencia",
-        description:
-          `${interaction.user}\n\n> ${suggestion}`,
-        color:
-          COLORS.warning
-      });
-
-    if (channel) {
-
-      await channel.send({
-        embeds: [embed]
-      });
-
+    if (
+      !isStaff(
+        interaction.member
+      )
+    ) {
       return interaction.reply({
         embeds: [
-          successEmbed(
-            "Tu sugerencia fue enviada correctamente."
+          errorEmbed(
+            "Solo el staff puede crear sorteos."
           )
         ],
         ephemeral: true
       });
     }
 
-    return interaction.reply({
-      embeds: [embed]
-    });
-  }
-
-  // ====================================================
-  // PING
-  // ====================================================
-
-  if (
-    command === "ping"
-  ) {
-
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "🏓 Pong",
-          description:
-            `🏓 WebSocket: **${client.ws.ping}ms**`,
-          color:
-            COLORS.success
-        })
-      ]
-    });
-  }
-
-  // ====================================================
-  // BOT INFO
-  // ====================================================
-
-  if (
-    command === "botinfo"
-  ) {
-
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "🤖 LRM Studio",
-          description:
-            "Bot oficial de LRM Studio.\n\n" +
-            `🤖 Servidores: **${client.guilds.cache.size}**\n` +
-            `👥 Usuarios: **${client.users.cache.size}**\n` +
-            `⚙️ Discord.js: **14.x**`,
-          color:
-            COLORS.primary
-        })
-      ]
-    });
-  }
-
-  // ====================================================
-  // SERVER INFO
-  // ====================================================
-
-  if (
-    command === "serverinfo"
-  ) {
-
-    const guild =
-      interaction.guild;
-
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "🖥️ Información del servidor",
-          description:
-            `🏠 Nombre: **${guild.name}**\n` +
-            `🆔 ID: \`${guild.id}\`\n` +
-            `👑 Owner: <@${guild.ownerId}>\n` +
-            `👥 Miembros: **${guild.memberCount}**\n` +
-            `📅 Creado: <t:${Math.floor(guild.createdTimestamp / 1000)}:R>`,
-          color:
-            COLORS.info
-        })
-      ]
-    });
-  }
-
-  // ====================================================
-  // MEMBER COUNT
-  // ====================================================
-
-  if (
-    command === "membercount"
-  ) {
-
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "👥 Miembros",
-          description:
-            `LRM Studio tiene actualmente **${interaction.guild.memberCount} miembros**.`,
-          color:
-            COLORS.info
-        })
-      ]
-    });
-  }
-
-  // ====================================================
-  // UPTIME
-  // ====================================================
-
-  if (
-    command === "uptime"
-  ) {
-
-    const seconds =
-      Math.floor(
-        client.uptime / 1000
+    const message =
+      interaction.options.getString(
+        "mensaje"
       );
 
-    const days =
-      Math.floor(
-        seconds / 86400
+    const time =
+      interaction.options.getString(
+        "tiempo"
       );
 
-    const hours =
-      Math.floor(
-        (seconds % 86400) /
-        3600
-      );
+    const requirements =
+      interaction.options.getString(
+        "requisitos"
+      ) || "Sin requisitos";
 
-    const minutes =
-      Math.floor(
-        (seconds % 3600) /
-        60
-      );
+    const duration =
+      parseTime(time);
 
-    const secs =
-      seconds % 60;
+    if (!duration) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "Tiempo inválido. Usa `30m`, `1h`, `1d`, etc."
+          )
+        ],
+        ephemeral: true
+      });
+    }
 
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "⏱️ Uptime",
-          description:
-            `🟢 Activo durante:\n\n` +
-            `**${days}d ${hours}h ${minutes}m ${secs}s**`,
-          color:
-            COLORS.success
-        })
-      ]
-    });
-  }
+    if (
+      duration >
+      30 * 24 * 60 * 60 * 1000
+    ) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "El máximo de duración es 30 días."
+          )
+        ],
+        ephemeral: true
+      });
+    }
 
-  // ====================================================
-  // USER INFO
-  // ====================================================
+    const id =
+      `${interaction.guild.id}-${Date.now()}`;
 
-  if (
-    command === "userinfo"
-  ) {
+    const giveaway = {
+      id,
+      guildId:
+        interaction.guild.id,
+      channelId:
+        interaction.channel.id,
+      message,
+      requirements,
+      hostId:
+        interaction.user.id,
+      endsAt:
+        Date.now() + duration,
+      ended: false,
+      participants: []
+    };
 
-    const target =
-      interaction.options.getUser(
-        "usuario"
-      ) ||
-      interaction.user;
+    data.giveaways[id] =
+      giveaway;
 
-    return interaction.reply({
-      embeds: [
-        glassEmbed({
-          title:
-            "👤 User Info",
-          description:
-            `👤 Usuario: ${target}\n` +
-            `🏷️ Tag: **${target.tag}**\n` +
-            `🆔 ID: \`${target.id}\`\n` +
-            `🤖 Bot: **${target.bot ? "Sí" : "No"}**\n` +
-            `📅 Cuenta creada: <t:${Math.floor(target.createdTimestamp / 1000)}:R>`,
-          color:
-            COLORS.info
-        })
-      ]
-    });
-  }
+    saveData();
 
-  // ====================================================
-  // AVATAR
-  // ====================================================
+    const button =
+      new ButtonBuilder()
+        .setCustomId(
+          `giveaway_join_${id}`
+        )
+        .setLabel(
+          "Participar"
+        )
+        .setEmoji("🎉")
+        .setStyle(
+          ButtonStyle.Primary
+        );
 
-  if (
-    command === "avatar"
-  ) {
-
-    const target =
-      interaction.options.getUser(
-        "usuario"
-      ) ||
-      interaction.user;
-
-    const avatar =
-      target.displayAvatarURL({
-        size: 4096,
-        extension: "png"
+    const embed =
+      glassEmbed({
+        title:
+          "🎉・Sorteo",
+        description:
+          `${message}\n\n` +
+          `⏱️ Termina: <t:${Math.floor(
+            giveaway.endsAt / 1000
+          )}:R>\n` +
+          `📋 Requisitos: **${requirements}**\n\n` +
+          `👤 Organizado por: ${interaction.user}`,
+        color:
+          COLORS.affy
       });
 
+    const sent =
+      await interaction.channel.send({
+        embeds: [embed],
+        components: [
+          new ActionRowBuilder()
+            .addComponents(
+              button
+            )
+        ]
+      });
+
+    giveaway.messageId =
+      sent.id;
+
+    saveData();
+
+    await logAction(
+      interaction.guild,
+      "giveaways",
+      "🎉 Sorteo creado",
+      `${interaction.user} creó un sorteo.\n\n` +
+      `🎁 ${message}\n` +
+      `📋 Requisitos: ${requirements}`
+    );
+
     return interaction.reply({
       embeds: [
-        glassEmbed({
-          title:
-            "🖼️ Avatar",
-          description:
-            `[Abrir avatar completo](${avatar})`,
-          color:
-            COLORS.info
-        }).setImage(
-          avatar
+        successEmbed(
+          "Sorteo creado correctamente."
         )
-      ]
+      ],
+      ephemeral: true
     });
   }
-
-  // ====================================================
-  // COMANDO DESCONOCIDO
-  // ====================================================
 
   return interaction.reply({
     embeds: [
@@ -2818,1103 +4009,400 @@ async function executeUserCommand(
 }
 
 // ======================================================
-// INTERACTIONS
+// BOTÓN DE SORTEO
 // ======================================================
 
 client.on(
   "interactionCreate",
   async interaction => {
+    if (
+      !interaction.isButton()
+    ) {
+      return;
+    }
 
-    try {
+    if (
+      !interaction.customId.startsWith(
+        "giveaway_join_"
+      )
+    ) {
+      return;
+    }
 
-      // ==================================================
-      // BOTONES LUCK ROYALE
-      // ==================================================
-
-      if (
-        interaction.isButton()
-      ) {
-
-        if (
-          interaction.customId ===
-          "luck_reject"
-        ) {
-
-          return interaction.update({
-            embeds: [
-              glassEmbed({
-                title:
-                  "✕ Luck Royale",
-                description:
-                  "Has cancelado la partida.",
-                color:
-                  COLORS.error
-              })
-            ],
-            components: []
-          });
-        }
-
-        if (
-          interaction.customId ===
-          "luck_accept"
-        ) {
-
-          return runLuckRoyale(
-            interaction
-          );
-        }
-      }
-
-      // ==================================================
-      // MENÚ UTILIDADES
-      // ==================================================
-
-      if (
-        interaction.isStringSelectMenu() &&
-        interaction.customId ===
-          "lrm_utilities_menu"
-      ) {
-
-        const value =
-          interaction.values[0];
-
-        if (
-          value === "ping"
-        ) {
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "🏓 Ping",
-                description:
-                  `WebSocket: **${client.ws.ping}ms**`,
-                color:
-                  COLORS.success
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "botinfo"
-        ) {
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "🤖 Bot Info",
-                description:
-                  `🤖 Servidores: **${client.guilds.cache.size}**\n` +
-                  `👥 Usuarios: **${client.users.cache.size}**`,
-                color:
-                  COLORS.primary
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "serverinfo"
-        ) {
-
-          const guild =
-            interaction.guild;
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "🖥️ Server Info",
-                description:
-                  `🏠 **${guild.name}**\n` +
-                  `👥 Miembros: **${guild.memberCount}**\n` +
-                  `🆔 \`${guild.id}\``,
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "membercount"
-        ) {
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "👥 Miembros",
-                description:
-                  `Este servidor tiene **${interaction.guild.memberCount} miembros**.`,
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "uptime"
-        ) {
-
-          const seconds =
-            Math.floor(
-              client.uptime / 1000
-            );
-
-          const days =
-            Math.floor(
-              seconds / 86400
-            );
-
-          const hours =
-            Math.floor(
-              (seconds % 86400) /
-              3600
-            );
-
-          const minutes =
-            Math.floor(
-              (seconds % 3600) /
-              60
-            );
-
-          const secs =
-            seconds % 60;
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "⏱️ Uptime",
-                description:
-                  `🟢 **${days}d ${hours}h ${minutes}m ${secs}s**`,
-                color:
-                  COLORS.success
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "userinfo"
-        ) {
-
-          const target =
-            interaction.user;
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "👤 User Info",
-                description:
-                  `👤 ${target}\n` +
-                  `🏷️ ${target.tag}\n` +
-                  `🆔 \`${target.id}\`\n` +
-                  `🤖 Bot: **${target.bot ? "Sí" : "No"}**`,
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "avatar"
-        ) {
-
-          const avatar =
-            interaction.user
-              .displayAvatarURL({
-                size:
-                  1024,
-                extension:
-                  "png"
-              });
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "🖼️ Avatar",
-                description:
-                  `[Abrir avatar completo](${avatar})`,
-                color:
-                  COLORS.info
-              }).setImage(
-                avatar
-              )
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "invitever"
-        ) {
-
-          const inviteData =
-            data.inviteSystem
-              ?.[interaction.guild.id]
-              ?.[interaction.user.id];
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "📨 Invitaciones",
-                description:
-                  `Has realizado **${inviteData?.invites || 0} invitaciones**.`,
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "random"
-        ) {
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "🎲 Random",
-                description:
-                  `Tu número aleatorio es **${random(1, 100)}**.`,
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "dice"
-        ) {
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "🎲 Dado",
-                description:
-                  `🎲 Sacaste un **${random(1, 6)}**.`,
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "choose"
-        ) {
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "🎯 Choose",
-                description:
-                  "Usa `/choose` y escribe las opciones separadas por comas.\n\n" +
-                  "Ejemplo: `/choose opciones: Pizza, Hamburguesa, Pasta`",
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "rps"
-        ) {
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "✊ Piedra, Papel o Tijera",
-                description:
-                  "Usa `/rps` para jugar contra el bot.",
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-
-        if (
-          value === "8ball"
-        ) {
-
-          return interaction.reply({
-            embeds: [
-              glassEmbed({
-                title:
-                  "🔮 8Ball",
-                description:
-                  "Usa `/8ball` y escribe tu pregunta.",
-                color:
-                  COLORS.info
-              })
-            ],
-            ephemeral:
-              true
-          });
-        }
-      }
-
-      // ==================================================
-      // SLASH COMMANDS
-      // ==================================================
-
-      if (
-        interaction.isChatInputCommand()
-      ) {
-
-        // IMPORTANTE:
-        // Los comandos de admin los maneja admin.js.
-        // Así evitamos respuestas duplicadas.
-
-        if (
-          adminCommands.some(
-            command =>
-              command.name ===
-              interaction.commandName
-          )
-        ) {
-          return;
-        }
-
-        return executeUserCommand(
-          interaction
-        );
-      }
-
-    } catch (error) {
-
-      console.error(
-        "Error en interactionCreate:",
-        error
+    const id =
+      interaction.customId.replace(
+        "giveaway_join_",
+        ""
       );
 
-      if (
-        interaction.replied ||
-        interaction.deferred
-      ) {
+    const giveaway =
+      data.giveaways[id];
 
-        return interaction
-          .followUp({
-            embeds: [
-              errorEmbed(
-                "Ocurrió un error ejecutando esta interacción."
-              )
-            ],
-            ephemeral:
-              true
-          })
-          .catch(
-            () => {}
-          );
-      }
-
-      return interaction
-        .reply({
-          embeds: [
-            errorEmbed(
-              "Ocurrió un error ejecutando esta interacción."
-            )
-          ],
-          ephemeral:
-            true
-        })
-        .catch(
-          () => {}
-        );
+    if (
+      !giveaway ||
+      giveaway.ended ||
+      Date.now() >= giveaway.endsAt
+    ) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "Este sorteo ya terminó."
+          )
+        ],
+        ephemeral: true
+      });
     }
+
+    giveaway.participants ??= [];
+
+    if (
+      giveaway.participants.includes(
+        interaction.user.id
+      )
+    ) {
+      return interaction.reply({
+        embeds: [
+          errorEmbed(
+            "Ya estás participando."
+          )
+        ],
+        ephemeral: true
+      });
+    }
+
+    giveaway.participants.push(
+      interaction.user.id
+    );
+
+    saveData();
+
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          "Ya estás participando en el sorteo. 🎉"
+        )
+      ],
+      ephemeral: true
+    });
   }
 );
 
 // ======================================================
-// MIEMBRO NUEVO
+// LOGS DE MENSAJES
 // ======================================================
 
 client.on(
-  "guildMemberAdd",
-  async member => {
+  "messageDelete",
+  async message => {
+    if (
+      !message.guild ||
+      message.author?.bot
+    ) {
+      return;
+    }
 
-    try {
+    await logAction(
+      message.guild,
+      "messages",
+      "🗑️ Mensaje eliminado",
+      `👤 Usuario: ${message.author || "Desconocido"}\n` +
+      `📍 Canal: ${message.channel}\n\n` +
+      `💬 Contenido:\n${
+        message.content
+          ? `> ${message.content.slice(0, 1000)}`
+          : "Sin contenido disponible."
+      }`
+    );
+  }
+);
 
-      const guild =
-        member.guild;
+client.on(
+  "messageUpdate",
+  async (oldMessage, newMessage) => {
+    if (
+      !newMessage.guild ||
+      oldMessage.author?.bot ||
+      oldMessage.content ===
+        newMessage.content
+    ) {
+      return;
+    }
 
-      const settings =
-        getGuildSettings(
-          guild.id
+    await logAction(
+      newMessage.guild,
+      "messages",
+      "✏️ Mensaje editado",
+      `👤 Usuario: ${newMessage.author}\n` +
+      `📍 Canal: ${newMessage.channel}\n\n` +
+      `Antes:\n> ${oldMessage.content?.slice(0, 500) || "Sin contenido"}\n\n` +
+      `Después:\n> ${newMessage.content?.slice(0, 500) || "Sin contenido"}`
+    );
+  }
+);
+
+// ======================================================
+// LOGS DE ROLES
+// ======================================================
+
+client.on(
+  "guildMemberUpdate",
+  async (oldMember, newMember) => {
+    if (
+      oldMember.roles.cache.size !==
+      newMember.roles.cache.size
+    ) {
+      const added =
+        newMember.roles.cache.filter(
+          role =>
+            !oldMember.roles.cache.has(
+              role.id
+            )
         );
 
-      // ==================================================
-      // DETECTAR INVITACIÓN UTILIZADA
-      // ==================================================
-
-      let usedInvite = null;
-
-      try {
-
-        const oldMap =
-          inviteCache.get(
-            guild.id
-          ) || new Map();
-
-        const newInvites =
-          await guild.invites.fetch();
-
-        const changes =
-          getInviteChanges(
-            oldMap,
-            newInvites
-          );
-
-        if (changes.length) {
-
-          usedInvite =
-            changes[0].invite;
-        }
-
-        const newMap =
-          new Map();
-
-        newInvites.forEach(
-          invite => {
-
-            newMap.set(
-              invite.code,
-              invite.uses || 0
-            );
-          }
+      const removed =
+        oldMember.roles.cache.filter(
+          role =>
+            !newMember.roles.cache.has(
+              role.id
+            )
         );
 
-        inviteCache.set(
-          guild.id,
-          newMap
-        );
-
-      } catch (error) {
-
-        console.error(
-          `No se pudo detectar la invitación usada en ${guild.name}:`,
-          error.message
-        );
-      }
-
-      // ==================================================
-      // BIENVENIDA
-      // ==================================================
-
-      if (
-        settings.welcomeChannel
-      ) {
-
-        const channel =
-          guild.channels.cache.get(
-            settings.welcomeChannel
-          );
-
-        if (channel) {
-
-          const welcomeText =
-            WELCOME_TEMPLATE
-              .replace(
-                "$(user.mention)",
-                `${member}`
-              )
-              .replace(
-                "$(server.member_count)",
-                String(
-                  guild.memberCount
-                )
-              );
-
-          await channel.send({
-            embeds: [
-              glassEmbed({
-                title:
-                  "👋・Bienvenido/a",
-                description:
-                  welcomeText,
-                color:
-                  COLORS.primary
-              })
-            ]
-          }).catch(
-            error =>
-              console.error(
-                "Error enviando bienvenida:",
-                error.message
-              )
-          );
-        }
-      }
-
-      // ==================================================
-      // INVITADOR
-      // ==================================================
-
-      if (
-        usedInvite &&
-        usedInvite.inviter
-      ) {
-
-        const inviter =
-          usedInvite.inviter;
-
-        data.inviteSystem[
-          guild.id
-        ] ??= {};
-
-        data.inviteSystem[
-          guild.id
-        ][
-          inviter.id
-        ] ??= {
-          invites: 0
-        };
-
-        data.inviteSystem[
-          guild.id
-        ][
-          inviter.id
-        ].invites++;
-
-        saveData();
-
-        // ==================================================
-        // MENSAJE DE INVITACIÓN
-        // ==================================================
-
-        if (
-          settings.inviteChannel
-        ) {
-
-          const channel =
-            guild.channels.cache.get(
-              settings.inviteChannel
-            );
-
-          if (channel) {
-
-            const inviteText =
-              INVITE_TEMPLATE
-                .replace(
-                  "$(inviter.mention)",
-                  `${inviter}`
-                )
-                .replace(
-                  "$(inviter.invites)",
-                  String(
-                    data.inviteSystem[
-                      guild.id
-                    ][
-                      inviter.id
-                    ].invites
-                  )
-                )
-                .replace(
-                  "$(server.member_count)",
-                  String(
-                    guild.memberCount
-                  )
-                );
-
-            await channel.send({
-              embeds: [
-                glassEmbed({
-                  title:
-                    "🔗・Nueva Invitación",
-                  description:
-                    inviteText,
-                  color:
-                    COLORS.info
-                })
-              ]
-            }).catch(
-              error =>
-                console.error(
-                  "Error enviando mensaje de invitación:",
-                  error.message
-                )
-            );
-          }
-        }
-
-      } else {
-
-        console.log(
-          `⚠️ No se pudo determinar quién invitó a ${member.user.tag} en ${guild.name}.`
+      if (added.size) {
+        await logAction(
+          newMember.guild,
+          "roles",
+          "➕ Rol añadido",
+          `${newMember} recibió: ${added.map(
+            role => role.toString()
+          ).join(", ")}`
         );
       }
 
-    } catch (error) {
+      if (removed.size) {
+        await logAction(
+          newMember.guild,
+          "roles",
+          "➖ Rol eliminado",
+          `A ${newMember} se le quitó: ${removed.map(
+            role => role.toString()
+          ).join(", ")}`
+        );
+      }
+    }
+  }
+);
 
-      console.error(
-        "Error en guildMemberAdd:",
-        error
+// ======================================================
+// LOGS DE CANALES
+// ======================================================
+
+client.on(
+  "channelCreate",
+  async channel => {
+    if (
+      !channel.guild
+    ) return;
+
+    await logAction(
+      channel.guild,
+      "channels",
+      "📁 Canal creado",
+      `Se creó ${channel}.`
+    );
+  }
+);
+
+client.on(
+  "channelDelete",
+  async channel => {
+    if (
+      !channel.guild
+    ) return;
+
+    await logAction(
+      channel.guild,
+      "channels",
+      "🗑️ Canal eliminado",
+      `Se eliminó el canal **${channel.name}**.`
+    );
+  }
+);
+
+// ======================================================
+// LOGS DE ROLES CREADOS / ELIMINADOS
+// ======================================================
+
+client.on(
+  "roleCreate",
+  async role => {
+    await logAction(
+      role.guild,
+      "roles",
+      "🎭 Rol creado",
+      `Se creó el rol ${role}.`
+    );
+  }
+);
+
+client.on(
+  "roleDelete",
+  async role => {
+    await logAction(
+      role.guild,
+      "roles",
+      "🗑️ Rol eliminado",
+      `Se eliminó el rol **${role.name}**.`
+    );
+  }
+);
+
+// ======================================================
+// LOGS DE BANS
+// ======================================================
+
+client.on(
+  "guildBanAdd",
+  async ban => {
+    await logAction(
+      ban.guild,
+      "moderation",
+      "🔨 Ban detectado",
+      `${ban.user} fue baneado.\n\n` +
+      `📝 Razón: ${
+        ban.reason || "No disponible"
+      }`,
+      COLORS.error
+    );
+  }
+);
+
+client.on(
+  "guildBanRemove",
+  async ban => {
+    await logAction(
+      ban.guild,
+      "moderation",
+      "🔓 Ban retirado",
+      `${ban.user} fue desbaneado.`,
+      COLORS.success
+    );
+  }
+);
+
+// ======================================================
+// LOGS DE VOZ
+// ======================================================
+
+client.on(
+  "voiceStateUpdate",
+  async (oldState, newState) => {
+    if (
+      !oldState.channelId &&
+      newState.channelId
+    ) {
+      await logAction(
+        newState.guild,
+        "voice",
+        "🔊 Entrada a voz",
+        `${newState.member} entró a ${newState.channel}.`
+      );
+    }
+
+    if (
+      oldState.channelId &&
+      !newState.channelId
+    ) {
+      await logAction(
+        oldState.guild,
+        "voice",
+        "🔇 Salida de voz",
+        `${oldState.member} salió de **${oldState.channel?.name || "voz"}**.`
       );
     }
   }
 );
 
 // ======================================================
-// MESSAGE CREATE
+// HONEYPOT
 // ======================================================
 
 client.on(
   "messageCreate",
   async message => {
-
     if (
-      message.author.bot ||
-      !message.guild
+      !message.guild ||
+      message.author.bot
     ) {
       return;
     }
 
-    const content =
-      message.content.trim();
-
-    // ==================================================
-    // PREFIX
-    // ==================================================
-
-    if (
-      content.startsWith(PREFIX)
-    ) {
-
-      const args =
-        content
-          .slice(PREFIX.length)
-          .trim()
-          .split(/\s+/);
-
-      const command =
-        args
-          .shift()
-          ?.toLowerCase();
-
-      // ================================================
-      // HELP
-      // ================================================
-
-      if (
-        command === "help"
-      ) {
-
-        return message.reply({
-          embeds: [
-            glassEmbed({
-              title:
-                "📚 LRM Studio",
-              description:
-                "Usa `/help` para ver los comandos disponibles.\n\n" +
-                "También puedes usar `/utilidades` para abrir el menú de utilidades.",
-              color:
-                COLORS.primary
-            })
-          ]
-        });
-      }
-
-      // ================================================
-      // UTILIDADES
-      // ================================================
-
-      if (
-        command === "utilidades"
-      ) {
-
-        return message.reply({
-          embeds: [
-            utilitiesEmbed()
-          ],
-          components: [
-            utilitiesMenu()
-          ]
-        });
-      }
-
-      // ================================================
-      // BALANCE
-      // ================================================
-
-      if (
-        command === "balance"
-      ) {
-
-        const user =
-          getUser(
-            message.author.id
-          );
-
-        return message.reply({
-          embeds: [
-            glassEmbed({
-              title:
-                `${E.money} Balance`,
-              description:
-                `💰 Wallet: **${user.wallet}**\n` +
-                `🏦 Banco: **${user.bank}**\n\n` +
-                `💵 Total: **${user.wallet + user.bank}**`,
-              color:
-                COLORS.economy
-            })
-          ]
-        });
-      }
-
-      // ================================================
-      // PING
-      // ================================================
-
-      if (
-        command === "ping"
-      ) {
-
-        return message.reply({
-          embeds: [
-            glassEmbed({
-              title:
-                "🏓 Pong",
-              description:
-                `WebSocket: **${client.ws.ping}ms**`,
-              color:
-                COLORS.success
-            })
-          ]
-        });
-      }
-
-      // ================================================
-      // LUCK ROYALE
-      // ================================================
-
-      if (
-        command === "luckroyale"
-      ) {
-
-        const fakeInteraction = {
-
-          user:
-            message.author,
-
-          guild:
-            message.guild,
-
-          reply:
-            options =>
-              message.reply(
-                options
-              )
-        };
-
-        return startLuckRoyale(
-          fakeInteraction
-        );
-      }
-
-      // ================================================
-      // AFFY
-      // ================================================
-
-      if (
-        command === "affy"
-      ) {
-
-        const code =
-          args[0]
-            ?.replace(
-              /https?:\/\/(?:www\.)?(?:discord\.gg|discord\.com\/invite)\//i,
-              ""
-            );
-
-        if (!code) {
-
-          return message.reply({
-            embeds: [
-              errorEmbed(
-                "Debes proporcionar una invitación de Discord.\n\n" +
-                "Ejemplo: `.affy discord.gg/ejemplo`"
-              )
-            ]
-          });
-        }
-
-        try {
-
-          const invite =
-            await client.fetchInvite(
-              code
-            );
-
-          if (
-            !invite.guild
-          ) {
-
-            return message.reply({
-              embeds: [
-                errorEmbed(
-                  "No pude encontrar el servidor de esa invitación."
-                )
-              ]
-            });
-          }
-
-          const guildId =
-            message.guild.id;
-
-          data.partners[
-            guildId
-          ] ??= {};
-
-          data.partners[
-            guildId
-          ][
-            invite.guild.id
-          ] ??= {
-            points: 0,
-            invites: 0,
-            name:
-              invite.guild.name
-          };
-
-          const partner =
-            data.partners[
-              guildId
-            ][
-              invite.guild.id
-            ];
-
-          partner.points++;
-
-          partner.name =
-            invite.guild.name;
-
-          saveData();
-
-          const rank =
-            getPartnerRank(
-              guildId,
-              partner.points
-            );
-
-          const affyText =
-            AFFY_TEMPLATE
-              .replace(
-                "$(invite.guild.name)",
-                invite.guild.name
-              )
-              .replace(
-                "$(user.mention)",
-                `${message.author}`
-              )
-              .replace(
-                "$(partner.rank)",
-                String(rank)
-              )
-              .replace(
-                "$(partner.points)",
-                String(
-                  partner.points
-                )
-              );
-
-          const settings =
-            getGuildSettings(
-              guildId
-            );
-
-          const channel =
-            settings.affysChannel
-              ? message.guild.channels.cache.get(
-                  settings.affysChannel
-                )
-              : null;
-
-          if (!channel) {
-
-            return message.reply({
-              embeds: [
-                errorEmbed(
-                  "No hay un canal de Affys configurado.\n\n" +
-                  "Configúralo desde el panel de administración."
-                )
-              ]
-            });
-          }
-
-          const embed =
-            glassEmbed({
-              title:
-                "💞・Nuevo Affy",
-              description:
-                affyText,
-              color:
-                COLORS.primary
-            });
-
-          await channel.send({
-            content:
-              "@everyone",
-            embeds: [
-              embed
-            ],
-            allowedMentions: {
-              parse: [
-                "everyone"
-              ]
-            }
-          });
-
-          return message.reply({
-            embeds: [
-              successEmbed(
-                `El Affy con **${invite.guild.name}** fue publicado correctamente.`
-              )
-            ]
-          });
-
-        } catch (error) {
-
-          console.error(
-            "Error creando Affy:",
-            error
-          );
-
-          return message.reply({
-            embeds: [
-              errorEmbed(
-                "No pude procesar esa invitación."
-              )
-            ]
-          });
-        }
-      }
-    }
-
-    // ==================================================
-    // XP POR MENSAJE
-    // ==================================================
-
-    const user =
-      getUser(
-        message.author.id
-      );
-
-    const result =
-      addXP(
-        message.author.id,
-        random(3, 8),
-        message.guild
+    const settings =
+      getGuildSettings(
+        message.guild.id
       );
 
     if (
-      result.leveledUp
+      !settings.honeypotChannel ||
+      message.channel.id !==
+        settings.honeypotChannel
     ) {
+      return;
+    }
 
-      const ranking =
-        getRank(
-          message.guild
-        );
+    if (
+      isAdmin(
+        message.member
+      )
+    ) {
+      return;
+    }
 
-      const rank =
-        ranking.findIndex(
-          x =>
-            x.id ===
-            message.author.id
-        ) + 1;
+    try {
+      if (
+        message.member?.bannable
+      ) {
+        await message.member.ban({
+          reason:
+            "Honeypot"
+        });
 
-      const levelMessage =
-        LEVEL_TEMPLATE
-          .replace(
-            "$(user.mention)",
-            `${message.author}`
-          )
-          .replace(
-            "$(level)",
-            String(
-              result.level
-            )
-          )
-          .replace(
-            "$(xp)",
-            String(
-              user.xp
-            )
-          )
-          .replace(
-            "$(rank)",
-            String(rank)
-          );
-
-      const settings =
-        getGuildSettings(
-          message.guild.id
-        );
-
-      const channel =
-        settings.levelChannel
-          ? message.guild.channels.cache.get(
-              settings.levelChannel
-            )
-          : message.channel;
-
-      if (channel) {
-
-        await channel.send({
-          embeds: [
-            glassEmbed({
-              title:
-                "🎉・¡Subiste de Nivel!",
-              description:
-                levelMessage,
-              color:
-                COLORS.level
-            })
-          ]
-        }).catch(
-          () => {}
+        await logAction(
+          message.guild,
+          "security",
+          "🍯 Honeypot activado",
+          `${message.author} activó el Honeypot y fue baneado.`,
+          COLORS.security
         );
       }
+    } catch (error) {
+      console.error(
+        "Error Honeypot:",
+        error.message
+      );
     }
+  }
+);
+
+// ======================================================
+// GUILD CREATE
+// ======================================================
+
+client.on(
+  "guildCreate",
+  async guild => {
+    getGuildSettings(
+      guild.id
+    );
+
+    saveData();
+
+    await cacheInvites(
+      guild
+    );
+
+    console.log(
+      `➕ Unido a ${guild.name}`
+    );
   }
 );
 
@@ -3925,29 +4413,18 @@ client.on(
 client.once(
   "clientReady",
   async () => {
-
     console.log(
-      `✅ ${client.user.tag} está conectado.`
+      `✅ ${client.user.tag} conectado.`
     );
 
     console.log(
       `🌐 Servidores: ${client.guilds.cache.size}`
     );
 
-    console.log(
-      `🏓 Ping: ${client.ws.ping}ms`
-    );
-
-    // ==================================================
-    // REGISTRAR COMANDOS
-    // ==================================================
-
     try {
-
       const rest =
         new REST({
-          version:
-            "10"
+          version: "10"
         }).setToken(
           TOKEN
         );
@@ -3967,69 +4444,32 @@ client.once(
       );
 
     } catch (error) {
-
       console.error(
-        "❌ Error registrando comandos:",
+        "Error registrando comandos:",
         error
       );
     }
-
-    // ==================================================
-    // CACHE DE INVITACIONES
-    // ==================================================
 
     for (
       const guild
       of client.guilds.cache.values()
     ) {
-
       await cacheInvites(
         guild
       );
     }
 
-    // ==================================================
-    // PRESENCIA
-    // ==================================================
-
     client.user.setPresence({
-
       activities: [
         {
           name:
             "LRM Studio 💜",
-          type:
-            3
+          type: 3
         }
       ],
-
       status:
         "online"
     });
-  }
-);
-
-// ======================================================
-// NUEVO SERVIDOR
-// ======================================================
-
-client.on(
-  "guildCreate",
-  async guild => {
-
-    console.log(
-      `➕ Unido a: ${guild.name}`
-    );
-
-    getGuildSettings(
-      guild.id
-    );
-
-    await cacheInvites(
-      guild
-    );
-
-    saveData();
   }
 );
 
@@ -4040,7 +4480,6 @@ client.on(
 process.on(
   "unhandledRejection",
   error => {
-
     console.error(
       "❌ Unhandled Rejection:",
       error
@@ -4051,7 +4490,6 @@ process.on(
 process.on(
   "uncaughtException",
   error => {
-
     console.error(
       "❌ Uncaught Exception:",
       error
@@ -4064,18 +4502,16 @@ process.on(
 // ======================================================
 
 if (!TOKEN) {
-
   console.error(
-    "❌ Falta DISCORD_TOKEN en las variables de entorno."
+    "❌ Falta DISCORD_TOKEN."
   );
 
   process.exit(1);
 }
 
 if (!CLIENT_ID) {
-
   console.error(
-    "❌ Falta CLIENT_ID en las variables de entorno."
+    "❌ Falta CLIENT_ID."
   );
 
   process.exit(1);
